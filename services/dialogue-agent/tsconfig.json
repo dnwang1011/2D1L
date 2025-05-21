@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "baseUrl": ".",
+    "paths": {
+      "@2dots1line/*": ["../../packages/*/src"],
+      "@services/*": ["../../services/*/src"]
+    },
+    "resolveJsonModule": true,
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/*.test.ts", "**/*.spec.ts", "dist", "**/__tests__/**"],
+  "references": [
+    { "path": "../../packages/shared-types" },
+    { "path": "../../packages/ai-clients" },
+    { "path": "../../packages/tool-registry" },
+    { "path": "../../packages/database" }
+  ]
+} 

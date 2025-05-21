@@ -1,0 +1,31 @@
+{
+  "name": "@2dots1line/database",
+  "version": "0.1.0",
+  "description": "Database access layer for 2dots1line V4",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "prisma": {
+    "schema": "src/prisma/schema.prisma",
+    "seed": "src/prisma/seed.ts"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src --ext .ts,.tsx",
+    "test": "jest",
+    "clean": "rimraf dist",
+    "prisma:generate": "../../node_modules/.bin/prisma generate --schema=src/prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "neo4j-driver": "^5.17.0",
+    "weaviate-ts-client": "^2.0.0",
+    "ioredis": "^5.3.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.0.0",
+    "prisma": "^5.22.0",
+    "rimraf": "^5.0.1",
+    "typescript": "^5.3.3"
+  }
+} 

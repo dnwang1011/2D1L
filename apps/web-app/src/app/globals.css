@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  /* Example: Apply a default background and text color from V4 theme */
+  /* This will depend on whether you default to light or dark mode */
+  /* background-color: theme('colors.backgroundDark'); */
+  /* color: theme('colors.textLight'); */
+  @apply bg-backgroundLight text-textDark;
+}
+
+/* Add other global styles or component layer customizations here */ 

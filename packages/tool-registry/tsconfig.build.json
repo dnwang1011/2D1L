@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json", // Correct relative path to root base config
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "noEmit": false // Ensure this package actually emits JS
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "src/__tests__"]
+} 

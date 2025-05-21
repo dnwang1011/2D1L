@@ -1,0 +1,447 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native"]
+  output        = "../../../node_modules/.prisma/client" // Adjusted path relative to new schema location
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Users of the 2dots1line system
+model users {
+  user_id         String    @id @default(uuid())
+  email           String    @unique
+  hashed_password String?
+  name            String?
+  preferences     Json?
+  region          String    @default("us")
+  created_at      DateTime  @default(now())
+  last_active_at  DateTime?
+  account_status  String    @default("active")
+  growth_profile  Json? // V7: Added for storing user's growth profile
+
+  // Relations
+  memory_units         memory_units[]
+  raw_content          raw_content[]
+  chunks               chunks[]
+  concepts             concepts[]
+  media                media[]
+  annotations          annotations[]
+  communities          communities[]
+  conversations        conversations[]
+  conversation_messages conversation_messages[]
+  insights             insights[]
+  user_activity_log    user_activity_log[]
+  user_perceived_concepts user_perceived_concepts[]
+  concept_relationships concept_relationships[]
+  growth_events        growth_events[] // V7: Relation to growth events
+
+  @@index([email])
+  @@index([region])
+}
+
+// V7: Table for storing all growth-related events (replaces growth_dimensions, entity_growth_progress)
+model growth_events {
+  event_id          String    @id @default(uuid())
+  user_id           String
+  timestamp         DateTime  @default(now())
+  event_type        String    // e.g., "CONCEPT_DISCOVERED", "MIND_EXPANDED", "CONNECTION_FORMED", "GOAL_SET", "REFLECTION_ADDED"
+  entity_type       String?   // e.g., "CONCEPT", "MEMORY_UNIT", "GOAL"
+  entity_id         String?   // ID of the related entity
+  event_data        Json      // Flexible JSON blob for event-specific details
+  significance_score Float?    // Optional score indicating event importance
+  source_interaction String?   // e.g., "CHAT_MESSAGE_ID", "JOURNAL_ENTRY_ID"
+
+  // Relations
+  user users @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id, timestamp(sort: Desc)])
+  @@index([user_id, event_type])
+  @@index([user_id, entity_type, entity_id])
+}
+
+// Concept for V7 Materialized View: mv_entity_growth
+// This view would aggregate growth_events to track progress for various entities (concepts, skills, etc.)
+// SQL Definition (example for PostgreSQL, to be placed in a migration file):
+// CREATE MATERIALIZED VIEW mv_entity_growth AS
+// SELECT
+//   user_id,
+//   entity_type,
+//   entity_id,
+//   event_type,
+//   COUNT(*) as event_count,
+//   SUM(CAST(json_extract_path_text(event_data, 'points') AS INTEGER)) as total_points, -- Example: if event_data contains points
+//   MAX(timestamp) as last_event_ts
+// FROM growth_events
+// GROUP BY user_id, entity_type, entity_id, event_type;
+
+// Concept for V7 View: v_card_state
+// This view would determine the current state of a "card" (e.g., a concept card in the UI)
+// based on its growth, interactions, and other factors derived from growth_events and other tables.
+// SQL Definition (example for PostgreSQL, to be placed in a migration file):
+// CREATE VIEW v_card_state AS
+// SELECT
+//   c.concept_id as card_id,
+//   c.user_id,
+//   c.name as card_title,
+//   'CONCEPT' as card_type,
+//   meg.total_points as current_xp, -- Example from mv_entity_growth
+//   CASE 
+//     WHEN meg.total_points > 100 THEN 'MASTERED' 
+//     WHEN meg.total_points > 50 THEN 'ADVANCED' 
+//     ELSE 'NOVICE' 
+//   END as card_level -- Example logic
+// FROM concepts c
+// LEFT JOIN mv_entity_growth meg ON c.concept_id = meg.entity_id AND meg.entity_type = 'CONCEPT' AND c.user_id = meg.user_id;
+
+
+// Distinct piece of user memory or input (journal, conversation, document)
+model memory_units {
+  muid              String   @id @default(uuid())
+  user_id           String
+  source_type       String
+  title             String?
+  creation_ts       DateTime
+  ingestion_ts      DateTime @default(now())
+  last_modified_ts  DateTime @default(now())
+  processing_status String   @default("raw")
+  importance_score  Float?
+  is_private        Boolean  @default(true)
+  tier              Int      @default(1)
+  metadata          Json?
+
+  // Relations
+  user                 users                  @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  raw_content          raw_content[]
+  chunks               chunks[]
+  media                media[]
+  conversation_messages conversation_messages[]
+  concept_relationships concept_relationships[] @relation("context_memory")
+
+  @@index([user_id, creation_ts(sort: Desc)])
+  @@index([user_id, processing_status])
+  @@index([user_id, source_type])
+  @@index([user_id, importance_score])
+}
+
+// Raw content storage - original unprocessed content
+model raw_content {
+  content_id    String   @id @default(uuid())
+  muid          String
+  user_id       String
+  content_type  String
+  content       String
+  sender_type   String?
+  sequence_order Int?
+  creation_ts   DateTime
+  metadata      Json?
+
+  // Relations
+  memory_unit memory_units @relation(fields: [muid], references: [muid], onDelete: Cascade)
+  user        users        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([muid])
+  @@index([user_id])
+  @@index([content_type])
+}
+
+// Granular, semantically coherent pieces of text from a MemoryUnit
+model chunks {
+  cid               String    @id @default(uuid())
+  muid              String
+  user_id           String
+  text              String
+  sequence_order    Int
+  role              String?
+  embedding_id      String?
+  char_count        Int?
+  token_count       Int?
+  embedding_model   String?
+  embedding_created_at DateTime?
+  metadata          Json?
+
+  // Relations
+  memory_unit memory_units @relation(fields: [muid], references: [muid], onDelete: Cascade)
+  user        users        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([muid, sequence_order])
+  @@index([user_id])
+  @@index([embedding_id])
+}
+
+// Entities, themes, values, emotions, topics, etc.
+model concepts {
+  concept_id       String    @id @default(uuid())
+  user_id          String
+  name             String
+  type             String
+  description      String?
+  user_defined     Boolean   @default(false)
+  confidence       Float?
+  community_id     String?
+  embedding_id     String?
+  ontology_version String?
+  created_at       DateTime  @default(now())
+  last_updated_ts  DateTime  @default(now())
+  metadata         Json?
+
+  // Relations
+  user         users            @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  community    communities?     @relation(fields: [community_id], references: [community_id])
+  perceptions  user_perceived_concepts[]
+  source_relationships concept_relationships[] @relation("source_concept")
+  target_relationships concept_relationships[] @relation("target_concept")
+
+  @@unique([user_id, name, type])
+  @@index([user_id, type])
+  @@index([user_id, name])
+  @@index([community_id])
+}
+
+// Non-text media associated with MemoryUnits
+model media {
+  media_id          String    @id @default(uuid())
+  muid              String?
+  user_id           String
+  type              String
+  storage_url       String
+  filename_original String?
+  mime_type         String?
+  file_size_bytes   Int?
+  hash_value        String?
+  caption           String?
+  extracted_text    String?
+  extraction_status String    @default("pending")
+  embedding_id      String?
+  width             Int?
+  height            Int?
+  duration_seconds  Int?
+  created_at        DateTime  @default(now())
+  metadata          Json?
+
+  // Relations
+  memory_unit memory_units? @relation(fields: [muid], references: [muid], onDelete: Cascade)
+  user        users        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([muid])
+  @@index([user_id])
+  @@index([user_id, type])
+  @@index([user_id, hash_value])
+}
+
+// User or AI annotations on MemoryUnits, Chunks, or Concepts
+model annotations {
+  aid               String   @id @default(uuid())
+  user_id           String
+  target_id         String
+  target_node_type  String
+  annotation_type   String
+  text_content      String
+  source            String
+  creation_ts       DateTime @default(now())
+  metadata          Json?
+
+  // Relations
+  user users @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([target_id, target_node_type])
+  @@index([user_id, annotation_type])
+  @@index([source])
+}
+
+// Detected thematic clusters or communities of Concepts
+model communities {
+  community_id      String    @id @default(uuid())
+  user_id           String
+  name              String?
+  description       String?
+  detection_method  String?
+  confidence_score  Float?
+  keywords          String[]
+  created_at        DateTime  @default(now())
+  last_analyzed_ts  DateTime?
+
+  // Relations
+  user     users     @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  concepts concepts[]
+
+  @@index([user_id])
+}
+
+// Logs of conversations with Dot for session context and later analysis
+model conversation_messages {
+  message_id             String    @id @default(uuid())
+  conversation_id        String
+  user_id                String
+  sender_type            String
+  message_text           String?
+  message_type           String    @default("text")
+  media_attachments      Json?
+  suggested_actions      Json?
+  timestamp              DateTime  @default(now())
+  processing_status      String    @default("pending_ingestion")
+  associated_muid        String?
+  retrieval_context_summary String?
+  user_feedback_on_response String?
+  metadata               Json?
+
+  // Relations
+  user        users        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  conversation conversations @relation(fields: [conversation_id], references: [conversation_id])
+  memory_unit  memory_units? @relation(fields: [associated_muid], references: [muid], onDelete: SetNull)
+
+  @@index([conversation_id, timestamp])
+  @@index([user_id, timestamp(sort: Desc)])
+  @@index([associated_muid])
+}
+
+// Conversation sessions metadata
+model conversations {
+  conversation_id    String   @id @default(uuid())
+  user_id            String
+  title              String?
+  start_time         DateTime
+  last_message_time  DateTime
+  status             String   @default("active")
+  metadata           Json?
+  summary            String?
+
+  // Relations
+  user                users                   @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  conversation_messages conversation_messages[]
+
+  @@index([user_id])
+}
+
+// Insights derived from user data
+model insights {
+  insight_id      String   @id @default(uuid())
+  user_id         String
+  type            String
+  content         Json
+  generated_at    DateTime @default(now())
+  source_muids    String[]
+  source_concepts String[]
+  metadata        Json?
+
+  // Relations
+  user users @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id, type])
+  @@index([user_id, generated_at(sort: Desc)])
+}
+
+// Global ontology terms for standardization
+model ontology_terms {
+  term_id          String    @id @default(uuid())
+  term_name        String    @unique
+  term_type        String
+  description      String?
+  version          String
+  parent_term_id   String?
+  related_terms    Json?
+  created_at       DateTime  @default(now())
+  last_modified_ts DateTime  @default(now())
+
+  // Relations
+  // self-relation for parent_term_id can be tricky, consider if needed or manage hierarchy differently
+
+  @@index([term_name, term_type])
+}
+
+// Tracks background processing jobs (embeddings, analysis, etc.)
+model agent_processing_jobs {
+  job_id           String   @id @default(uuid())
+  job_type         String
+  status           String   @default("pending") // pending, in_progress, completed, failed
+  target_entity_id String?  // e.g., muid, concept_id
+  target_node_type String?
+  priority         Int      @default(0)
+  payload          Json?
+  result           Json?
+  error_message    String?
+  created_at       DateTime @default(now())
+  started_at       DateTime?
+  completed_at     DateTime?
+  retry_count      Int      @default(0)
+
+  @@index([job_type, status])
+  @@index([target_entity_id, target_node_type])
+  @@index([priority, created_at])
+}
+
+// Stores user-perceived concepts to capture subjective understanding and growth
+model user_perceived_concepts {
+  perception_id    String   @id @default(uuid())
+  user_id          String
+  concept_id       String
+  perceived_name   String?  // User's own name or understanding of the concept
+  understanding_level Float?   // e.g., 0.0 to 1.0, or a scale
+  interest_level   Float?
+  last_updated_ts  DateTime @default(now())
+  source_muids     String[] // MUIDs that led to this perception
+  metadata         Json?
+
+  // Relations
+  user    users    @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  concept concepts @relation(fields: [concept_id], references: [concept_id], onDelete: Cascade)
+
+  @@unique([user_id, concept_id])
+  @@index([user_id, last_updated_ts(sort: Desc)])
+}
+
+// Relationships between concepts (e.g., prerequisite, related, conflicting)
+model concept_relationships {
+  relationship_id   String    @id @default(uuid())
+  user_id           String
+  source_concept_id String
+  target_concept_id String
+  relationship_type String    // e.g., "is_a", "part_of", "influences", "related_to"
+  strength          Float?    // Confidence or importance of the relationship
+  user_defined      Boolean   @default(false)
+  context_muid      String?   // MUID providing context for this relationship
+  created_at        DateTime  @default(now())
+  last_updated_ts   DateTime  @default(now())
+  metadata          Json?
+
+  // Relations
+  user           users        @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  source_concept concepts     @relation("source_concept", fields: [source_concept_id], references: [concept_id], onDelete: Cascade)
+  target_concept concepts     @relation("target_concept", fields: [target_concept_id], references: [concept_id], onDelete: Cascade)
+  context_memory memory_units? @relation("context_memory", fields: [context_muid], references: [muid], onDelete: SetNull)
+
+  @@unique([user_id, source_concept_id, target_concept_id, relationship_type])
+  @@index([user_id, relationship_type])
+  @@index([user_id, source_concept_id])
+  @@index([user_id, target_concept_id])
+}
+
+// For monitoring system health and performance (simplified)
+model system_metrics {
+  metric_id String   @id @default(uuid())
+  name      String
+  value     Float
+  timestamp DateTime @default(now())
+  tags      Json?    // e.g., { "service": "api", "region": "us-east-1" }
+
+  @@index([name, timestamp(sort: Desc)])
+}
+
+// Logs user activity for analytics and auditing (simplified)
+model user_activity_log {
+  log_id       String   @id @default(uuid())
+  user_id      String
+  action       String   // e.g., "LOGIN", "CREATE_MEMORY_UNIT", "VIEW_CONCEPT"
+  timestamp    DateTime @default(now())
+  details      Json?
+  ip_address   String?
+  user_agent   String?
+
+  // Relations
+  user users @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@index([user_id, timestamp(sort: Desc)])
+  @@index([action])
+} 
