@@ -45,4 +45,8 @@ logs
 
 # Build artifacts
 dist
-build 
+build
+
+# Database data directories
+postgres_data/
+neo4j_data/ 
