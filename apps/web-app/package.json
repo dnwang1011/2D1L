@@ -12,7 +12,10 @@
     "next": "14.2.3",
     "react": "^18",
     "react-dom": "^18",
-    "@2dots1line/shared-types": "workspace:*"
+    "@2dots1line/shared-types": "file:../../packages/shared-types",
+    "@react-three/fiber": "^8.16.8",
+    "@react-three/drei": "^9.100.0",
+    "three": "^0.164.1"
   },
   "devDependencies": {
     "@types/node": "^20",

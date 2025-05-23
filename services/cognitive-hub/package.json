@@ -1,0 +1,32 @@
+{
+  "name": "@2dots1line/cognitive-hub",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "eslint . --ext .ts",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@2dots1line/agent-framework": "file:../../packages/agent-framework",
+    "@2dots1line/tool-registry": "file:../../packages/tool-registry",
+    "@2dots1line/database": "file:../../packages/database",
+    "@2dots1line/shared-types": "file:../../packages/shared-types",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^18.19.14",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3"
+  }
+}
+
+ 

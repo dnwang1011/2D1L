@@ -180,4 +180,50 @@ export { PrismaClientWrapper };
 // export const prisma: ExtendedPrismaClient = PrismaClientWrapper.getInstance();
 export const prisma: PrismaClient = PrismaClientWrapper.getInstance(); // Changed type
 export const disconnectPrisma = PrismaClientWrapper.disconnect.bind(PrismaClientWrapper);
-export const prismaHealthCheck = PrismaClientWrapper.healthCheck.bind(PrismaClientWrapper); 
+export const prismaHealthCheck = PrismaClientWrapper.healthCheck.bind(PrismaClientWrapper);
+
+// V7 Event Sourcing Helper Functions
+
+/**
+ * Creates a new growth event.
+ */
+export async function createGrowthEvent(data: Omit<Prisma.growth_eventsCreateInput, 'user'> & { userId: string }) {
+  const { userId, ...eventData } = data;
+  return prisma.growth_events.create({
+    data: {
+      ...eventData,
+      user: {
+        connect: { user_id: userId },
+      },
+    },
+  });
+}
+
+/**
+ * Retrieves the aggregated growth profile for a user from the materialized view.
+ */
+export async function getGrowthProfile(userId: string): Promise<Record<string, number>> {
+  const profileData = await prisma.$queryRaw<Array<{ dim_key: string; score: number }>>(
+    Prisma.sql`SELECT dim_key, score FROM mv_entity_growth WHERE user_id = ${userId}`
+  );
+  
+  const profile: Record<string, number> = {};
+  for (const item of profileData) {
+    profile[item.dim_key] = (profile[item.dim_key] || 0) + item.score;
+  }
+  return profile;
+}
+
+/**
+ * Retrieves the evolution state for a specific entity (card) from the view.
+ */
+export async function getCardState(entityId: string, entityType: string, userId: string): Promise<string | null> {
+  const result = await prisma.$queryRaw<Array<{ evolution_state: string }>>(
+    Prisma.sql`SELECT evolution_state FROM v_card_state WHERE entity_id = ${entityId} AND entity_type = ${entityType} AND user_id = ${userId}`
+  );
+
+  if (result.length > 0) {
+    return result[0].evolution_state;
+  }
+  return null;
+} 

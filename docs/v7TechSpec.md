@@ -226,13 +226,272 @@ The persistence layer adopts a distributed approach where data is stored in the 
    - Backend state changes can suggest scene transitions (e.g., "I notice a pattern forming in your cosmos").
    - AscensionScene serves as a meaningful loading/transition metaphor between modes.
 
+## 3. User Interface Implementation
+
+This section details how the UI components leverage the event-sourcing approach and computed views to display information to users in an engaging, visually coherent way.
+
+### 3.1 Card Modal Implementation
+
+The Card Modal is a central UI element that displays detailed information about a concept, memory, or derived artifact. With the revised event-sourcing schema, the card modal dynamically reflects the current state computed from events rather than reading static values.
+
+#### 3.1.1 Card Modal Structure
+
+1. **Header Section:**
+   - Title and entity type with visually distinct styling per type
+   - Card evolution state visualization (seed, sprout, bloom, constellation) derived from `v_card_state` view
+   - Visual indicator showing recency and importance (glow intensity based on event timestamps)
+
+2. **Content Section:**
+   - Description or summary text with media attachments if applicable
+   - For memories: journal text, images, or embedded media
+   - For concepts: definition and key associations
+   - For artifacts: derived content and insight summary
+
+3. **Growth Dimension Panel:**
+   - Radar chart visualization of the six dimensions, computed from the `mv_entity_growth` materialized view
+   - Dimension bars fill proportionally to accumulated scores from events
+   - Animated transitions when dimensions reach threshold values
+   - Tooltip descriptions for each dimension loaded from Redis configuration, not hardcoded
+
+4. **Connection Map:**
+   - Miniature visualization of connected entities fetched from Neo4j
+   - Connection strength indicated by line thickness (based on relationship weight)
+   - Click targets for navigation to related cards
+
+5. **History Timeline:**
+   - Chronological display of growth events affecting this entity
+   - Meaningful grouping of events for readability (e.g., "5 growth events from journal entries")
+   - Interactive timeline that allows exploring how the entity evolved over time
+
+#### 3.1.2 Data Loading Strategy
+
+The card modal implements a tiered loading approach aligned with the overall architecture:
+
+1. **Initial Load (Fast):**
+   - Basic metadata and pre-computed state from Postgres via API call:
+     ```typescript
+     GET /api/entities/:entityId
+     Response: {
+       id: string,
+       name: string,
+       type: string,
+       description: string,
+       evolution_state: string, // From v_card_state view
+       growth_dimensions: {     // From mv_entity_growth view
+         self_know: number,
+         self_act: number,
+         // ... other dimensions
+       },
+       created_at: string,
+       connection_count: number
+     }
+     ```
+
+2. **Enrichment Phase (Progressive):**
+   - While user views the card, background requests fetch:
+     - Neo4j connections with endpoint `/api/entities/:entityId/connections`
+     - Recent growth events with `/api/entities/:entityId/events?limit=10`
+     - Associated media with `/api/entities/:entityId/media`
+
+3. **Interactive Elements:**
+   - User actions trigger real-time updates:
+     - Clicking "Explore dimension" fetches detailed dimension data from events
+     - Expanding connection graph loads additional relationship data
+     - Adding annotations creates new events in the system
+
+#### 3.1.3 State Transitions & Animations
+
+Card state transitions are driven by the computed state and visualized with animations:
+
+1. **Evolution Transitions:**
+   - When a card evolves from one state to another, a particle animation celebrates the change
+   - Animation is triggered when frontend detects a difference between cached and fresh evolution_state
+   - State change persists in user activity log as an event for analytics
+
+2. **Dimension Activations:**
+   - When a dimension crosses activation threshold, a radial animation highlights that spoke
+   - Activation animations are controlled by frontend logic comparing previous vs. current dimension scores
+   - The animation also triggers an Orb response acknowledging the growth
+
+3. **New Connection Visualization:**
+   - When a new connection is made between cards, an animated path traces the connection
+   - The animation is triggered by websocket notification when relationship events occur
+
+### 3.2 Dashboard Modal Implementation
+
+The Dashboard Modal serves as the user's central hub for system-wide information, progress tracking, and recommendations. It directly visualizes the event-sourced growth model and computed states.
+
+#### 3.2.1 Dashboard Components
+
+1. **Growth Profile Section:**
+   - Six-dimensional radar chart showing overall profile from `users.growth_profile` JSONB
+   - Progression indicators showing historic trends derived from growth events
+   - Visual indicators for dominant and growing dimensions
+   - Dimension descriptions loaded from configuration, not hardcoded schema
+
+2. **Active Challenges Panel:**
+   - List of current challenges with progress bars
+   - Progress computed from event comparison rather than static values:
+     ```typescript
+     // Pseudo-code for challenge progress computation
+     const challengeProgress = {
+       journalingStreak: {
+         currentCount: countEventsOfType('journal_entry', { 
+           since: lastStreakBreak, 
+           timeframe: 'daily' 
+         }),
+         target: challengeTemplate.payload.streakTarget,
+         progress: currentCount / target
+       }
+     };
+     ```
+   - New challenge suggestions based on growth event patterns
+   - Challenge completion celebrations with confetti animation and reward cards
+
+3. **Recent Activity Timeline:**
+   - Chronological stream of growth events across all entities
+   - Intelligent grouping of similar events
+   - Visual differentiation by dimension and source
+   - "Continue" links to relevant memories or concepts
+
+4. **Insights Gallery:**
+   - AI-generated insights derived from analysis of growth events and patterns
+   - "Orb's Dreams" section featuring creative connections between seemingly unrelated concepts
+   - Insight cards link to the source entities that contributed to their generation
+
+5. **Constellation Progress:**
+   - Galaxy-like visualization of concept clusters from Neo4j community detection
+   - Progress indicators showing completion status of key constellations
+   - Recommendations for actions to complete emerging constellations
+
+#### 3.2.2 Dashboard Data Architecture
+
+The Dashboard implements a layered data loading strategy that balances real-time updates with performance:
+
+1. **Cached Summary Layer:**
+   - Fast-loading profile summary and counts from materialized views
+   - Pre-computed constellation state and challenge progress
+   - Last refresh timestamp to indicate recency
+
+2. **Real-Time Events Layer:**
+   - WebSocket connection for live updates as events occur
+   - Event counter badges showing new activity since last visit
+   - Notification panel for significant threshold crossings or insights
+
+3. **Deep Analysis Layer:**
+   - Background loading of trend analysis and pattern detection
+   - On-demand computation of complex relationship visualizations
+   - Lazy-loaded historical statistics that don't impact initial render time
+
+#### 3.2.3 Frontend-Backend Integration
+
+The Dashboard connects to multiple backend services, implementing the event-driven architecture:
+
+1. **API Endpoints:**
+   ```typescript
+   GET /api/dashboard/summary                // Fast, cached overview
+   GET /api/dashboard/challenges             // Active and available challenges
+   GET /api/dashboard/growth-profile         // Six-dimensional stats with history
+   GET /api/dashboard/recent-events?limit=20 // Latest growth events
+   GET /api/dashboard/insights/recent        // Latest insights from Insight Engine
+   ```
+
+2. **WebSocket Channels:**
+   ```typescript
+   socket.subscribe('user:growth-events', (event) => {
+     // Update dimension chart
+     updateDimensionChart(event.dim_key, event.delta);
+     // Add to activity timeline
+     prependToTimeline(formatEvent(event));
+     // Check for threshold crossings
+     checkThresholds(event.dim_key, currentValues[event.dim_key] + event.delta);
+   });
+   
+   socket.subscribe('insight:new', (insight) => {
+     // Show new insight notification
+     showInsightNotification(insight);
+     // Add to insights gallery if dashboard open
+     if (isDashboardVisible) {
+       addInsightToGallery(insight);
+     }
+   });
+   ```
+
+3. **UI State Management:**
+   ```typescript
+   const dashboardStore = create((set, get) => ({
+     // Core data
+     growthProfile: null,
+     recentEvents: [],
+     activeInsights: [],
+     activeChallenges: [],
+     
+     // UI state
+     selectedDimension: null,
+     timeRange: '30days',
+     
+     // Actions
+     fetchDashboardData: async () => {
+       // Parallel requests for better performance
+       const [profile, events, insights, challenges] = await Promise.all([
+         api.get('/dashboard/growth-profile'),
+         api.get('/dashboard/recent-events?limit=20'),
+         api.get('/dashboard/insights/recent'),
+         api.get('/dashboard/challenges')
+       ]);
+       
+       set({
+         growthProfile: profile,
+         recentEvents: events,
+         activeInsights: insights,
+         activeChallenges: challenges,
+       });
+     },
+     
+     // Event handlers
+     handleNewEvent: (event) => {
+       set(state => ({
+         recentEvents: [event, ...state.recentEvents.slice(0, 19)],
+         // Update other state based on event
+       }));
+     }
+   }));
+   ```
+
+### 3.3 Card and Dashboard Visual Design
+
+Both the Card Modal and Dashboard implement coherent visual design principles that reflect the event-sourced nature of the data:
+
+1. **Growth Visualization:**
+   - Consistent color coding of dimensions across all UI components
+   - Animated transitions that reflect actual changes in the event stream
+   - Visual history elements showing progression over time
+
+2. **State Representation:**
+   - Card evolution states have distinct visual treatments with increasing complexity
+   - Surface characteristics (glow, particle effects, motion) tied to underlying data
+   - Clear visual feedback when a state change occurs
+
+3. **Interactive Elements:**
+   - Direct manipulation triggers event creation in the backend
+   - Real-time feedback when new events affect the visualization
+   - Cause-and-effect clarity between user actions and system responses
+
+4. **Temporal Context:**
+   - Timeline elements to visualize the historical event stream
+   - Visual differentiation between recent and older events
+   - Growth trajectory indicators showing momentum and trends
+
+By implementing the UI components with direct connection to the event-sourcing system, they become dynamic reflections of the user's growth journey rather than static displays of database state. This approach aligns perfectly with the design principles of configuration over schema, event-sourcing for analytics, and dynamic computation over static storage.
+
+
 ## 4. Knowledge Model
 
 The Knowledge Model defines how user memories and insights are structured to support both backend logic and frontend visualization. It builds on the core graph structure from V4 while adding specific extensions for the V7 UI/UX design.
 
-### 3.1 Core Knowledge Graph Schema
+### 4.1 Core Knowledge Graph Schema
 
-#### 3.1.1 Node Types
+#### 4.1.1 Node Types
 
 1. **`User`**
    - Properties: `userId` (unique), `name`, `preferences` (includes UI settings, Orb interaction style), `growth_profile` (JSONB for Six-Dimensional Growth progress).
@@ -282,7 +541,7 @@ The Knowledge Model defines how user memories and insights are structured to sup
    - UI Representation: Special Cards with unique visual treatment in the Card Gallery.
    - Includes "Orb's Dream Cards", "Mystery Challenges", and "Cosmic Quests" from the gamification system.
 
-#### 3.1.2 Relationship Types
+#### 4.1.2 Relationship Types
 
 1. **`(User)-[:AUTHORED]->(MemoryUnit)`**
    - Connects users to their memory units.
@@ -338,11 +597,11 @@ The Knowledge Model defines how user memories and insights are structured to sup
     - Properties: `dimension_key` (string), `strength` (float).
     - Links derived artifacts (especially quests/challenges) to growth dimensions.
 
-### 3.2 Six-Dimensional Growth Model Implementation
+### 4.2 Six-Dimensional Growth Model Implementation
 
 The Six-Dimensional Growth Model is a core gamification element implemented through an event-sourcing approach that provides flexibility, history tracking, and efficient analytics.
 
-#### 3.2.1 Growth Profile and Configuration
+#### 4.2.1 Growth Profile and Configuration
 
 ```sql
 -- Growth profile stored directly in user table for efficient access
@@ -363,7 +622,7 @@ The six core dimensions remain unchanged conceptually:
 5. Show Self: Expressing one's inner truth
 6. Show to World: Sharing insights with others
 
-#### 3.2.2 Growth Events Stream
+#### 4.2.2 Growth Events Stream
 
 ```sql
 CREATE TABLE growth_events (
@@ -383,7 +642,7 @@ This event-sourcing approach provides several advantages:
 - **Time-series friendly**: Powers entity progress, user charts, and analytics from the same table
 - **Flexible evolution**: New scoring algorithms can be implemented by recalculating the materialized view without migrating rows
 
-#### 3.2.3 Materialized View for UI
+#### 4.2.3 Materialized View for UI
 
 ```sql
 CREATE MATERIALIZED VIEW mv_entity_growth AS 
@@ -398,7 +657,7 @@ GROUP BY entity_id, entity_type, dim_key;
 
 This materialized view provides efficient read access for UI components that need to display growth progress. It can be refreshed on demand or with triggers when new events are added.
 
-#### 3.2.4 Card Evolution as Computed View
+#### 4.2.4 Card Evolution as Computed View
 
 ```sql
 CREATE VIEW v_card_state AS
@@ -431,7 +690,7 @@ Evolution states are computed dynamically based on:
 
 This removes the need for a separate evolution state table and background jobs to update states. The UI queries the view to get current states, eliminating potential sync issues.
 
-#### 3.2.5 Challenge System
+#### 4.2.5 Challenge System
 
 The challenge system is split into templates and instances for greater flexibility:
 
@@ -463,7 +722,7 @@ This approach offers several advantages:
 - Progress logic lives in backend code with flexible progress tracking via JSON
 - Rewards are implemented as DerivedArtifacts of type "trophy" or "poster" for consistency
 
-### 3.3 Activation Logic for Growth Dimensions
+### 4.3 Activation Logic for Growth Dimensions
 
 The system applies rules to update growth dimensions by appending events to the growth_events table based on user interactions:
 
@@ -499,7 +758,7 @@ The system applies rules to update growth dimensions by appending events to the 
 
 The Ingestion Analyst agent analyzes user content to identify these patterns and creates growth events accordingly, which in turn refreshes the materialized view and updates dimension scores in the UI.
 
-### 3.4 User Growth Summary View
+### 4.4 User Growth Summary View
 
 ```sql
 CREATE VIEW user_growth_summary AS
@@ -517,7 +776,7 @@ GROUP BY u.user_id, u.name, ge.dim_key;
 
 This view provides an efficient summary of a user's growth progress across all dimensions, derived directly from the event stream.
 
-### 3.5 Schema Governance and Evolution
+### 4.5 Schema Governance and Evolution
 
 The Ontology Steward continues to manage controlled vocabularies for the system as specified in V4. Additionally, it now also manages:
 
@@ -542,11 +801,11 @@ The frontend implementation leverages modern web technologies to create an immer
 - **Type Safety:** TypeScript with strict type checking
 - **Shader Programming:** GLSL for custom WebGL shaders
 
-### 4.2 3D Canvas Layer Implementation
+### 5.2 3D Canvas Layer Implementation
 
 The 3D Canvas Layer provides immersive spatial environments that evoke emotion and visualize the knowledge graph in a way that is both beautiful and informative.
 
-#### 4.2.1 Canvas Architecture
+#### 5.2.1 Canvas Architecture
 
 ```tsx
 // Base Canvas Component
@@ -584,9 +843,9 @@ function SceneManager({ activeScene, transitioning }) {
 }
 ```
 
-#### 4.2.2 Scene Implementations
+#### 5.2.2 Scene Implementations
 
-##### 4.2.2.1 CloudScene
+##### 5.2.2.1 CloudScene
 
 The CloudScene provides a tranquil, reflective environment for journaling and contemplation.
 
@@ -628,7 +887,7 @@ export function CloudScene() {
 - Precomputed cloud noise textures for better performance
 - Seamless transitions between weather/time states
 
-##### 4.2.2.2 AscensionScene
+##### 5.2.2.2 AscensionScene
 
 The AscensionScene provides a meaningful transition between the CloudScene and GraphScene, visualizing the journey from personal reflection to knowledge exploration.
 
@@ -671,7 +930,7 @@ export function AscensionScene() {
 - Adaptive transition duration based on device performance
 - Fallback simplified transition for low-end devices
 
-##### 4.2.2.3 GraphScene
+##### 5.2.2.3 GraphScene
 
 The GraphScene visualizes the knowledge graph as an explorable cosmic system with celestial metaphors for different node types.
 
@@ -797,7 +1056,7 @@ function ConceptNode({ position, nodeData, isFocused, size, type }) {
 - Efficient GPU-based force calculation for large graphs
 - Fall back to 2D visualization on low-end devices
 
-#### 4.2.3 Shader Implementations
+#### 5.2.3 Shader Implementations
 
 Custom GLSL shaders provide advanced visual effects critical to the emotional resonance of the experience:
 
@@ -877,7 +1136,7 @@ void main() {
 }
 ```
 
-#### 4.2.4 Performance Optimization Strategy
+#### 5.2.4 Performance Optimization Strategy
 
 The 3D Canvas Layer employs several strategies to ensure high performance across devices:
 
@@ -933,11 +1192,11 @@ export function AdaptivePerformance() {
 }
 ```
 
-### 4.3 2D Modal Layer Implementation
+### 5.3 2D Modal Layer Implementation
 
 The 2D Modal Layer consists of structured UI elements floating above the 3D canvas, providing intuitive access to information and interactions.
 
-#### 4.3.1 Modal Architecture
+#### 5.3.1 Modal Architecture
 
 ```tsx
 // ModalLayer.tsx
@@ -981,7 +1240,7 @@ export function ModalLayer() {
 }
 ```
 
-#### 4.3.2 Card Gallery Implementation
+#### 5.3.2 Card Gallery Implementation
 
 The Card Gallery is the primary interface for browsing and interacting with the user's knowledge graph as discrete cards.
 
@@ -1024,7 +1283,7 @@ export function CardGallery() {
 }
 ```
 
-#### 4.3.3 Card Component
+#### 5.3.3 Card Component
 
 The Card component is a central UI element representing nodes from the knowledge graph.
 
@@ -1125,7 +1384,7 @@ export function Card({ data, isFocused, layout }) {
 }
 ```
 
-#### 4.3.4 Growth Dimension Indicator
+#### 5.3.4 Growth Dimension Indicator
 
 Visual indicator for a card's progress in the Six-Dimensional Growth Model.
 
@@ -1150,7 +1409,7 @@ export function GrowthDimensionIndicator({ dimension, status, progress }) {
 }
 ```
 
-#### 4.3.5 Chat Interface
+#### 5.3.5 Chat Interface
 
 The Chat Interface enables communication with the Dialogue Agent (Dot), represented visually by the Orb.
 
@@ -1255,7 +1514,7 @@ function ChatMessage({ message, isUser }) {
 }
 ```
 
-#### 4.3.6 HUD (Heads-Up Display)
+#### 5.3.6 HUD (Heads-Up Display)
 
 The HUD provides consistent navigation and status display across all scenes.
 
@@ -1288,7 +1547,7 @@ export function HUD() {
 }
 ```
 
-#### 4.3.7 Glassmorphic Design System
+#### 5.3.7 Glassmorphic Design System
 
 The UI implements a consistent glassmorphic design language using Tailwind CSS and custom utilities.
 
@@ -1341,7 +1600,7 @@ export function GlassmorphicPanel({
 }
 ```
 
-### 4.4 State Management
+### 5.4 State Management
 
 The application uses Zustand with Immer for state management, organized into multiple specialized stores:
 
@@ -1456,7 +1715,7 @@ export const useCardGalleryStore = create<CardGalleryStore>()(
 );
 ```
 
-### 4.5 API Communication
+### 5.5 API Communication
 
 The application uses TanStack Query for data fetching and mutation with a structured API client:
 
@@ -1543,11 +1802,11 @@ export function useCardQuery() {
 }
 ```
 
-### 4.6 3D Orb Implementation
+### 5.6 3D Orb Implementation
 
 The 3D Orb is a central element of the user experience, serving as the visual representation of the Dialogue Agent (Dot). Its appearance, behavior, and effects dynamically change to reflect the agent's internal state and the user's interaction context.
 
-#### 4.6.1 Orb Architecture
+#### 5.6.1 Orb Architecture
 
 ```tsx
 // OrbLayer.tsx
@@ -1668,7 +1927,7 @@ export function Orb({ emotionalTone, visualState, energyLevel, isSpeaking }) {
 }
 ```
 
-#### 4.6.2 Orb Shader Implementation
+#### 5.6.2 Orb Shader Implementation
 
 The Orb's visual appearance is primarily driven by custom GLSL shaders:
 
@@ -1752,7 +2011,7 @@ void main() {
 }
 ```
 
-#### 4.6.3 Emotional States
+#### 5.6.3 Emotional States
 
 The Orb's appearance changes based on the emotional tone of the interaction:
 
@@ -1767,7 +2026,7 @@ The Orb's appearance changes based on the emotional tone of the interaction:
 | Celebratory    | #F72585     | #FFCCD5     | Explosive patterns, particle emissions |
 | Serene         | #588157     | #A3B18A     | Smooth flowing energy, harmonious patterns |
 
-#### 4.6.4 Visual States
+#### 5.6.4 Visual States
 
 The Orb's form and behavior changes based on its functional state:
 
@@ -1783,7 +2042,7 @@ The Orb's form and behavior changes based on its functional state:
 | Transitioning    | Moving between scenes | Elongated form, directional energy flow |
 | Celebration      | Achievement recognition | Particle bursts, increase in size and activity |
 
-#### 4.6.5 Orb Effects System
+#### 5.6.5 Orb Effects System
 
 The Orb can display temporary visual effects to communicate specific events or conditions:
 
@@ -1841,11 +2100,11 @@ export function OrbEffect({ effect }) {
 }
 ```
 
-### 4.7 Frontend-Backend Integration
+### 5.7 Frontend-Backend Integration
 
 The frontend and backend systems are tightly integrated, with several key mechanisms for synchronization:
 
-#### 4.7.1 Event-Driven State Synchronization
+#### 5.7.1 Event-Driven State Synchronization
 
 The UI state and backend events are synchronized through a bidirectional event system:
 
@@ -1917,7 +2176,7 @@ export function useAgentEvents() {
 }
 ```
 
-#### 4.7.2 Graph Visualization Data Integration
+#### 5.7.2 Graph Visualization Data Integration
 
 The GraphScene directly visualizes data from the knowledge graph:
 
@@ -1982,7 +2241,7 @@ function transformGraphData(backendData) {
 }
 ```
 
-#### 4.7.3 Card Data Integration
+#### 5.7.3 Card Data Integration
 
 The Card Gallery integrates with the backend to display and update cards:
 
@@ -2094,11 +2353,11 @@ function enrichCardWithVisuals(card) {
 }
 ```
 
-### 4.8 Accessibility Implementation
+### 5.8 Accessibility Implementation
 
 The 3D-heavy nature of the application presents accessibility challenges that are addressed through:
 
-#### 4.8.1 Alternative Navigation Modes
+#### 5.8.1 Alternative Navigation Modes
 
 ```tsx
 // hooks/useAccessibilityMode.ts
@@ -2147,7 +2406,7 @@ export function useAccessibilityMode() {
 }
 ```
 
-#### 4.8.2 2D Alternative Views
+#### 5.8.2 2D Alternative Views
 
 For users who cannot use the 3D interface, the system provides 2D alternatives:
 
@@ -2219,7 +2478,7 @@ export function AccessibleGraphView() {
 }
 ```
 
-#### 4.8.3 Accessibility Features
+#### 5.8.3 Accessibility Features
 
 Additional accessibility features include:
 
@@ -2544,7 +2803,7 @@ export abstract class BaseAgent extends EventEmitter {
 }
 ```
 
-#### 5.3.2 Dialogue Agent Implementation
+#### 6.3.2 Dialogue Agent Implementation
 
 The Dialogue Agent coordinates conversations and manages the Orb's behavior:
 
@@ -2869,7 +3128,7 @@ export class DialogueAgent extends BaseAgent {
 }
 ```
 
-#### 5.3.3 Orb State Manager
+#### 6.3.3 Orb State Manager
 
 The Orb State Manager manages the Orb's visual state and synchronizes it with the frontend:
 
@@ -3038,11 +3297,11 @@ export class OrbStateManager extends EventEmitter {
 }
 ```
 
-### 5.4 Data Persistence Implementation
+### 6.4 Data Persistence Implementation
 
 The data layer implementation uses a polyglot persistence approach with specialized databases for different aspects of the system.
 
-#### 5.4.1 Database Integration Layer
+#### 6.4.1 Database Integration Layer
 
 The database integration layer provides unified access to the different databases:
 
@@ -3176,7 +3435,7 @@ export class DatabaseService {
 }
 ```
 
-#### 5.4.2 Growth Model Data Repository
+#### 6.4.2 Growth Model Data Repository
 
 The Growth Model Repository provides access to the Six-Dimensional Growth Model data:
 
@@ -3368,11 +3627,11 @@ export class GrowthModelRepository {
 }
 ```
 
-### 5.5 Card Service Implementation
+### 6.5 Card Service Implementation
 
 The Card Service manages the card gallery data and Six-Dimensional Growth Model:
 
-#### 5.5.1 Card Data Models
+#### 6.5.1 Card Data Models
 
 ```typescript
 // services/card-service/src/models/card.model.ts
@@ -3405,7 +3664,7 @@ export interface GrowthDimension {
 export type CardEvolutionState = 'seed' | 'sprout' | 'bloom' | 'constellation' | 'supernova';
 ```
 
-#### 5.5.2 Card Service Implementation
+#### 6.5.2 Card Service Implementation
 
 ```typescript
 // services/card-service/src/services/card.service.ts
@@ -3861,7 +4120,7 @@ export class CardService {
 }
 ```
 
-#### 5.5.3 Card API Controller
+#### 6.5.3 Card API Controller
 
 ```typescript
 // services/card-service/src/controllers/card.controller.ts
@@ -3986,7 +4245,7 @@ This section details the end-to-end data flow through the system, following an e
 
 The memory ingestion pipeline is designed to be asynchronous and tiered, following the principle of "store quickly, enrich gradually" for optimal user experience.
 
-#### 5.1.1 Capture & Storage (Frontend → Backend)
+#### 7.1.1 Capture & Storage (Frontend → Backend)
 
 1. **User creates content** via journal entry, voice note, photo upload, etc.
    - Frontend immediately displays a "pending" card in the UI
@@ -3999,7 +4258,7 @@ The memory ingestion pipeline is designed to be asynchronous and tiered, followi
    - Returns `muid` to frontend for updating the local UI state
    - Enqueues processing job in Redis queue with appropriate priority
 
-#### 5.1.2 Processing & Knowledge Extraction
+#### 7.1.2 Processing & Knowledge Extraction
 
 1. **Content preprocessing**
    - For voice: Transcribes audio using Speech-to-Text services
@@ -4019,7 +4278,7 @@ The memory ingestion pipeline is designed to be asynchronous and tiered, followi
    - Creates growth events for any relevant dimensions activated
    - Updates `processing_status='structured'`
 
-#### 5.1.3 Finalization & Integration
+#### 7.1.3 Finalization & Integration
 
 1. **Notify frontend** of completed processing
    - WebSocket event or poll-based notification
@@ -4048,7 +4307,7 @@ This pipeline implements a clean event-driven architecture where:
 
 The dialogue system combines hybrid retrieval (vector + graph) with a consistent Orb persona to create meaningful interactions.
 
-#### 5.2.1 User Query Processing
+#### 7.2.1 User Query Processing
 
 1. **Query reception** via chat interface or voice input
    - Raw query stored in `conversation_messages`
@@ -4065,7 +4324,7 @@ The dialogue system combines hybrid retrieval (vector + graph) with a consistent
    - Combines retrieved memories, concepts, and insights
    - Formats context for LLM prompt with appropriate structure
 
-#### 5.2.2 Response Generation
+#### 7.2.2 Response Generation
 
 1. **LLM orchestration**
    - Constructs prompt with system instructions, context, and query
@@ -4087,7 +4346,7 @@ This dialogue flow ensures:
 
 The Insight Engine operates asynchronously to derive meaning from the knowledge graph.
 
-#### 5.3.1 Pattern Discovery
+#### 7.3.1 Pattern Discovery
 
 1. **Scheduled analysis** runs during quiet periods
    - Community detection to identify concept clusters
@@ -4099,7 +4358,7 @@ The Insight Engine operates asynchronously to derive meaning from the knowledge 
    - Generates growth events for any dimension progress
    - Creates challenges based on observed patterns
 
-#### 5.3.2 Integration
+#### 7.3.2 Integration
 
 1. **Knowledge graph augmentation**
    - Adds new relationships to Neo4j
@@ -4157,14 +4416,14 @@ The Ingestion Analyst processes raw user inputs into structured knowledge and ma
 
 The Retrieval Planner implements hybrid search strategies combining vector, graph, and relational queries.
 
-#### 6.3.1 Key Responsibilities
+#### 8.3.1 Key Responsibilities
 
 - Plans optimal retrieval strategies based on query context
 - Combines results from multiple data sources (Weaviate, Neo4j, Postgres)
 - Reranks and scores results for relevance
 - Formats context for the Dialogue Agent's LLM prompt
 
-#### 6.3.2 Event Integration
+#### 8.3.2 Event Integration
 
 - Queries materialized views for efficient data access
 - Uses computed card evolution states from views rather than static tables
@@ -4175,14 +4434,14 @@ The Retrieval Planner implements hybrid search strategies combining vector, grap
 
 The Insight Engine works asynchronously to derive meaning from the knowledge graph using the event-sourced data.
 
-#### 6.4.1 Key Responsibilities
+#### 8.4.1 Key Responsibilities
 
 - Discovers patterns, connections, and hypotheses in the knowledge graph
 - Generates "Orb's Dream Cards" and suggests constellation completions
 - Creates challenges and quests for the gamification system
 - Identifies temporal patterns and sentiment shifts
 
-#### 6.4.2 Event Integration
+#### 8.4.2 Event Integration
 
 - Processes the growth_events stream to identify patterns over time
 - Creates derived artifacts based on event analysis
@@ -4194,21 +4453,21 @@ The Insight Engine works asynchronously to derive meaning from the knowledge gra
 
 The Ontology Steward manages controlled vocabularies and ensures consistency across the system.
 
-#### 6.5.1 Key Responsibilities
+#### 8.5.1 Key Responsibilities
 
 - Manages and evolves the controlled vocabularies
 - Ensures concept type consistency
 - Maps visual properties to entity types
 - Guides classification of user content
 
-#### 6.5.2 Event Integration
+#### 8.5.2 Event Integration
 
 - Maintains configuration in Redis rather than database tables
 - Updates dimension definitions without requiring schema changes
 - Publishes ontology updates as events for system-wide consistency
 - Monitors entity creation events to enforce ontological rules
 
-### 6.6 Agent Coordination
+### 8.6 Agent Coordination
 
 The agents communicate through an event-driven architecture:
 
@@ -4328,261 +4587,3 @@ The core schema focuses on raw data while analytics happen in dedicated layers:
    - Agents interact through event streams and queues
 
 These design principles create a system that is flexible, maintainable, and able to evolve without costly migrations. The event-sourcing approach preserves historical data for analytics, while computation-based derived data ensures consistency without redundant state management. The distributed storage strategy leverages the strengths of each database system while maintaining a coherent data model through configuration and events.
-
-## 3. User Interface Implementation
-
-This section details how the UI components leverage the event-sourcing approach and computed views to display information to users in an engaging, visually coherent way.
-
-### 3.1 Card Modal Implementation
-
-The Card Modal is a central UI element that displays detailed information about a concept, memory, or derived artifact. With the revised event-sourcing schema, the card modal dynamically reflects the current state computed from events rather than reading static values.
-
-#### 3.1.1 Card Modal Structure
-
-1. **Header Section:**
-   - Title and entity type with visually distinct styling per type
-   - Card evolution state visualization (seed, sprout, bloom, constellation) derived from `v_card_state` view
-   - Visual indicator showing recency and importance (glow intensity based on event timestamps)
-
-2. **Content Section:**
-   - Description or summary text with media attachments if applicable
-   - For memories: journal text, images, or embedded media
-   - For concepts: definition and key associations
-   - For artifacts: derived content and insight summary
-
-3. **Growth Dimension Panel:**
-   - Radar chart visualization of the six dimensions, computed from the `mv_entity_growth` materialized view
-   - Dimension bars fill proportionally to accumulated scores from events
-   - Animated transitions when dimensions reach threshold values
-   - Tooltip descriptions for each dimension loaded from Redis configuration, not hardcoded
-
-4. **Connection Map:**
-   - Miniature visualization of connected entities fetched from Neo4j
-   - Connection strength indicated by line thickness (based on relationship weight)
-   - Click targets for navigation to related cards
-
-5. **History Timeline:**
-   - Chronological display of growth events affecting this entity
-   - Meaningful grouping of events for readability (e.g., "5 growth events from journal entries")
-   - Interactive timeline that allows exploring how the entity evolved over time
-
-#### 3.1.2 Data Loading Strategy
-
-The card modal implements a tiered loading approach aligned with the overall architecture:
-
-1. **Initial Load (Fast):**
-   - Basic metadata and pre-computed state from Postgres via API call:
-     ```typescript
-     GET /api/entities/:entityId
-     Response: {
-       id: string,
-       name: string,
-       type: string,
-       description: string,
-       evolution_state: string, // From v_card_state view
-       growth_dimensions: {     // From mv_entity_growth view
-         self_know: number,
-         self_act: number,
-         // ... other dimensions
-       },
-       created_at: string,
-       connection_count: number
-     }
-     ```
-
-2. **Enrichment Phase (Progressive):**
-   - While user views the card, background requests fetch:
-     - Neo4j connections with endpoint `/api/entities/:entityId/connections`
-     - Recent growth events with `/api/entities/:entityId/events?limit=10`
-     - Associated media with `/api/entities/:entityId/media`
-
-3. **Interactive Elements:**
-   - User actions trigger real-time updates:
-     - Clicking "Explore dimension" fetches detailed dimension data from events
-     - Expanding connection graph loads additional relationship data
-     - Adding annotations creates new events in the system
-
-#### 3.1.3 State Transitions & Animations
-
-Card state transitions are driven by the computed state and visualized with animations:
-
-1. **Evolution Transitions:**
-   - When a card evolves from one state to another, a particle animation celebrates the change
-   - Animation is triggered when frontend detects a difference between cached and fresh evolution_state
-   - State change persists in user activity log as an event for analytics
-
-2. **Dimension Activations:**
-   - When a dimension crosses activation threshold, a radial animation highlights that spoke
-   - Activation animations are controlled by frontend logic comparing previous vs. current dimension scores
-   - The animation also triggers an Orb response acknowledging the growth
-
-3. **New Connection Visualization:**
-   - When a new connection is made between cards, an animated path traces the connection
-   - The animation is triggered by websocket notification when relationship events occur
-
-### 3.2 Dashboard Modal Implementation
-
-The Dashboard Modal serves as the user's central hub for system-wide information, progress tracking, and recommendations. It directly visualizes the event-sourced growth model and computed states.
-
-#### 3.2.1 Dashboard Components
-
-1. **Growth Profile Section:**
-   - Six-dimensional radar chart showing overall profile from `users.growth_profile` JSONB
-   - Progression indicators showing historic trends derived from growth events
-   - Visual indicators for dominant and growing dimensions
-   - Dimension descriptions loaded from configuration, not hardcoded schema
-
-2. **Active Challenges Panel:**
-   - List of current challenges with progress bars
-   - Progress computed from event comparison rather than static values:
-     ```typescript
-     // Pseudo-code for challenge progress computation
-     const challengeProgress = {
-       journalingStreak: {
-         currentCount: countEventsOfType('journal_entry', { 
-           since: lastStreakBreak, 
-           timeframe: 'daily' 
-         }),
-         target: challengeTemplate.payload.streakTarget,
-         progress: currentCount / target
-       }
-     };
-     ```
-   - New challenge suggestions based on growth event patterns
-   - Challenge completion celebrations with confetti animation and reward cards
-
-3. **Recent Activity Timeline:**
-   - Chronological stream of growth events across all entities
-   - Intelligent grouping of similar events
-   - Visual differentiation by dimension and source
-   - "Continue" links to relevant memories or concepts
-
-4. **Insights Gallery:**
-   - AI-generated insights derived from analysis of growth events and patterns
-   - "Orb's Dreams" section featuring creative connections between seemingly unrelated concepts
-   - Insight cards link to the source entities that contributed to their generation
-
-5. **Constellation Progress:**
-   - Galaxy-like visualization of concept clusters from Neo4j community detection
-   - Progress indicators showing completion status of key constellations
-   - Recommendations for actions to complete emerging constellations
-
-#### 3.2.2 Dashboard Data Architecture
-
-The Dashboard implements a layered data loading strategy that balances real-time updates with performance:
-
-1. **Cached Summary Layer:**
-   - Fast-loading profile summary and counts from materialized views
-   - Pre-computed constellation state and challenge progress
-   - Last refresh timestamp to indicate recency
-
-2. **Real-Time Events Layer:**
-   - WebSocket connection for live updates as events occur
-   - Event counter badges showing new activity since last visit
-   - Notification panel for significant threshold crossings or insights
-
-3. **Deep Analysis Layer:**
-   - Background loading of trend analysis and pattern detection
-   - On-demand computation of complex relationship visualizations
-   - Lazy-loaded historical statistics that don't impact initial render time
-
-#### 3.2.3 Frontend-Backend Integration
-
-The Dashboard connects to multiple backend services, implementing the event-driven architecture:
-
-1. **API Endpoints:**
-   ```typescript
-   GET /api/dashboard/summary                // Fast, cached overview
-   GET /api/dashboard/challenges             // Active and available challenges
-   GET /api/dashboard/growth-profile         // Six-dimensional stats with history
-   GET /api/dashboard/recent-events?limit=20 // Latest growth events
-   GET /api/dashboard/insights/recent        // Latest insights from Insight Engine
-   ```
-
-2. **WebSocket Channels:**
-   ```typescript
-   socket.subscribe('user:growth-events', (event) => {
-     // Update dimension chart
-     updateDimensionChart(event.dim_key, event.delta);
-     // Add to activity timeline
-     prependToTimeline(formatEvent(event));
-     // Check for threshold crossings
-     checkThresholds(event.dim_key, currentValues[event.dim_key] + event.delta);
-   });
-   
-   socket.subscribe('insight:new', (insight) => {
-     // Show new insight notification
-     showInsightNotification(insight);
-     // Add to insights gallery if dashboard open
-     if (isDashboardVisible) {
-       addInsightToGallery(insight);
-     }
-   });
-   ```
-
-3. **UI State Management:**
-   ```typescript
-   const dashboardStore = create((set, get) => ({
-     // Core data
-     growthProfile: null,
-     recentEvents: [],
-     activeInsights: [],
-     activeChallenges: [],
-     
-     // UI state
-     selectedDimension: null,
-     timeRange: '30days',
-     
-     // Actions
-     fetchDashboardData: async () => {
-       // Parallel requests for better performance
-       const [profile, events, insights, challenges] = await Promise.all([
-         api.get('/dashboard/growth-profile'),
-         api.get('/dashboard/recent-events?limit=20'),
-         api.get('/dashboard/insights/recent'),
-         api.get('/dashboard/challenges')
-       ]);
-       
-       set({
-         growthProfile: profile,
-         recentEvents: events,
-         activeInsights: insights,
-         activeChallenges: challenges,
-       });
-     },
-     
-     // Event handlers
-     handleNewEvent: (event) => {
-       set(state => ({
-         recentEvents: [event, ...state.recentEvents.slice(0, 19)],
-         // Update other state based on event
-       }));
-     }
-   }));
-   ```
-
-### 3.3 Card and Dashboard Visual Design
-
-Both the Card Modal and Dashboard implement coherent visual design principles that reflect the event-sourced nature of the data:
-
-1. **Growth Visualization:**
-   - Consistent color coding of dimensions across all UI components
-   - Animated transitions that reflect actual changes in the event stream
-   - Visual history elements showing progression over time
-
-2. **State Representation:**
-   - Card evolution states have distinct visual treatments with increasing complexity
-   - Surface characteristics (glow, particle effects, motion) tied to underlying data
-   - Clear visual feedback when a state change occurs
-
-3. **Interactive Elements:**
-   - Direct manipulation triggers event creation in the backend
-   - Real-time feedback when new events affect the visualization
-   - Cause-and-effect clarity between user actions and system responses
-
-4. **Temporal Context:**
-   - Timeline elements to visualize the historical event stream
-   - Visual differentiation between recent and older events
-   - Growth trajectory indicators showing momentum and trends
-
-By implementing the UI components with direct connection to the event-sourcing system, they become dynamic reflections of the user's growth journey rather than static displays of database state. This approach aligns perfectly with the design principles of configuration over schema, event-sourcing for analytics, and dynamic computation over static storage.

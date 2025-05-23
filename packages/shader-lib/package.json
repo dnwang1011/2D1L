@@ -1,0 +1,18 @@
+{
+  "name": "@2dots1line/shader-lib",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && node ./scripts/bundle-shaders.js", 
+    "lint": "eslint . --ext .ts",
+    "test": "echo \"No tests for shader-lib yet\" && exit 0"
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3",
+    "glob": "^10.3.10", 
+    "fs-extra": "^11.2.0" 
+  }
+} 

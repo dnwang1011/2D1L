@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google'; // Example font
 import './globals.css';
 import Header from '@/components/layout/Header'; // Import the Header
+import Canvas3D from '@/components/canvas/Canvas3D'; // Import the 3D Canvas
 
 // If Lora or other fonts are chosen in tailwind.config.ts, import them too
 // import { Lora } from 'next/font/google';
@@ -21,14 +22,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-backgroundLight`}> {/* Add default bg */}
-        <Header /> {/* Add the Header component */}
-        <main className="min-h-screen container mx-auto p-4">
-          {children}
-        </main>
-        <footer className="bg-gray-800 text-white p-4 text-center mt-auto">
-          © 2025 2Dots1Line
-        </footer>
+      <body className={`${inter.className} bg-backgroundLight text-textDark`}> {/* Ensure textDark for readability */}
+        <Canvas3D /> {/* Add the 3D Canvas as a background layer */}
+        <div style={{ position: 'relative', zIndex: 1 }}> {/* Content wrapper */}
+          <Header />
+          <main className="min-h-screen container mx-auto p-4">
+            {children}
+          </main>
+          <footer className="bg-gray-800 text-white p-4 text-center mt-auto">
+            © 2025 2Dots1Line
+          </footer>
+        </div>
       </body>
     </html>
   );

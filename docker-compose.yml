@@ -1,0 +1,82 @@
+networks:
+  2d1l_network:
+    external: true
+
+services:
+
+  weaviate:
+    image: semitechnologies/weaviate:1.25.3
+    container_name: weaviate-2d1l
+    ports:
+      - "8080:8080"
+      - "50051:50051" # gRPC
+    restart: on-failure:0
+    networks:
+      - 2d1l_network
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      DEFAULT_VECTORIZER_MODULE: 'none' # Application will provide vectors
+      ENABLE_MODULES: '' # No modules needed if app handles all vectorization/generation
+      # GOOGLE_API_KEY: '${GOOGLE_API_KEY}' # Not needed by Weaviate if vectors are provided by app
+      # GOOGLE_VERTEX_PROJECT_ID: '${GOOGLE_VERTEX_PROJECT_ID}'
+      # GOOGLE_VERTEX_LOCATION: '${GOOGLE_VERTEX_LOCATION}'     # Uncomment if using Vertex AI models
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      CLUSTER_HOSTNAME: 'node1' # Necessary for Weaviate 1.18+
+    volumes:
+      - ./weaviate_data:/var/lib/weaviate # Persistent storage for Weaviate
+
+  neo4j:
+    image: neo4j:5.9.0 # Make sure this is the version you want
+    container_name: neo4j-2d1l # Simpler name
+    ports:
+      - "7475:7474" # Using 7475 for host HTTP to avoid conflict if old one is also running
+      - "7688:7687" # Using 7688 for host Bolt to avoid conflict
+    restart: unless-stopped
+    networks:
+      - 2d1l_network
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD_V7?Error: NEO4J_PASSWORD_V7 is not set in .env}
+      # Add other Neo4j specific env vars here if needed, e.g., for APOC or memory settings
+      # NEO4J_dbms_memory_heap_initial__size: 512m
+      # NEO4J_dbms_memory_heap_max__size: 2G 
+    volumes:
+      - ./neo4j_data:/data # Persistent storage for Neo4j
+
+  postgres:
+    image: postgres:15 # Or your preferred version
+    container_name: postgres-2d1l
+    ports:
+      - "5433:5432" # Expose PostgreSQL port to host
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER_V7:-pguser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_V7?Error: POSTGRES_PASSWORD_V7 is not set in .env}
+      POSTGRES_DB: ${POSTGRES_DB_V7:-2d1l_db}
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data # Persistent storage for PostgreSQL
+    networks:
+      - 2d1l_network
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: ./apps/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway-2d1l
+    ports:
+      - "3001:3001" # Expose API Gateway port (matches .env.example and Dockerfile)
+    depends_on:
+      - postgres # Ensure postgres is up before api-gateway starts
+      # - neo4j # if direct connection needed
+      # - weaviate # if direct connection needed
+      # - redis # if direct connection needed
+    networks:
+      - 2d1l_network
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://${POSTGRES_USER_V7:-pguser}:${POSTGRES_PASSWORD_V7?Error: POSTGRES_PASSWORD_V7 is not set in .env}@postgres:5432/${POSTGRES_DB_V7:-2d1l_db}
+      - JWT_SECRET=${JWT_SECRET_V7?Error: JWT_SECRET_V7 is not set in .env}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN_V7:-1d}
+    # volumes: # If you need to map source code for development with nodemon, configure here
+    #   - ./apps/api-gateway/src:/usr/src/app/src 
+    restart: unless-stopped

@@ -13,6 +13,7 @@
 export * as AI from './ai';
 export * as API from './api';
 export * as Entities from './entities';
+export * as State from './state';
 
 // Optionally, re-export very common individual types for convenience
 // Example: export type { TUser } from './entities';
@@ -77,6 +78,8 @@ export type {
     IngestionJob, 
     InsightJob 
 } from './ai';
+
+export type { OrbData, OrbState, OrbActions, OrbStore } from './state';
 
 // This file is a placeholder that will be populated with the actual type definitions
 // in the next implementation step. 

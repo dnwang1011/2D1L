@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@2dots1line/agent-framework": ["../../packages/agent-framework/src"],
+      "@2dots1line/tool-registry": ["../../packages/tool-registry/src"],
+      "@2dots1line/database": ["../../packages/database/src"],
+      "@2dots1line/shared-types": ["../../packages/shared-types/src"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+} 

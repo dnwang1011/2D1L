@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Styles for Storybook preview area if needed */
+body {
+  /* Ensure a default background for stories if components don't set one */
+  /* This should ideally match your app's default background */
+  background-color: #f0f0f0; /* Example light grey, adjust as needed */
+  padding: 1rem;
+} 
