@@ -38,6 +38,7 @@ export class MemoryRepository {
           user_id: data.user_id,
           source_type: data.source_type,
           title: data.title,
+          content: data.content, // V7: Store content directly in memory_units
           creation_ts: new Date(),
           processing_status: 'raw',
           tier: data.tier || 1,
@@ -46,20 +47,6 @@ export class MemoryRepository {
           metadata: data.metadata,
         },
       });
-
-      // If content is provided, create raw content entry
-      if (data.content) {
-        await this.prisma.raw_content.create({
-          data: {
-            muid: memoryUnit.muid,
-            user_id: data.user_id,
-            content_type: 'text',
-            content: data.content,
-            sequence_order: 1,
-            creation_ts: new Date(),
-          },
-        });
-      }
 
       return memoryUnit;
     } catch (error: any) {
@@ -102,7 +89,6 @@ export class MemoryRepository {
     return await this.prisma.memory_units.findMany({
       where: { user_id: userId },
       include: {
-        raw_content: true,
         chunks: {
           orderBy: { sequence_order: 'asc' },
         },
@@ -123,7 +109,6 @@ export class MemoryRepository {
         user_id: userId,
       },
       include: {
-        raw_content: true,
         chunks: {
           orderBy: { sequence_order: 'asc' },
         },
@@ -151,6 +136,36 @@ export class MemoryRepository {
     return await this.prisma.chunks.findMany({
       where: { muid },
       orderBy: { sequence_order: 'asc' },
+    });
+  }
+
+  /**
+   * Update memory unit metadata
+   */
+  async updateMemoryUnitMetadata(muid: string, metadataKey: string, metadataValue: any) {
+    // Get current metadata
+    const memoryUnit = await this.prisma.memory_units.findUnique({
+      where: { muid },
+      select: { metadata: true },
+    });
+
+    if (!memoryUnit) {
+      throw new Error(`Memory unit with ID ${muid} not found`);
+    }
+
+    // Merge new metadata with existing
+    const currentMetadata = (memoryUnit.metadata as Record<string, any>) || {};
+    const updatedMetadata = {
+      ...currentMetadata,
+      [metadataKey]: metadataValue,
+    };
+
+    return await this.prisma.memory_units.update({
+      where: { muid },
+      data: { 
+        metadata: updatedMetadata,
+        last_modified_ts: new Date(),
+      },
     });
   }
 } 

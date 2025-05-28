@@ -217,13 +217,25 @@ export async function getGrowthProfile(userId: string): Promise<Record<string, n
 /**
  * Retrieves the evolution state for a specific entity (card) from the view.
  */
-export async function getCardState(entityId: string, entityType: string, userId: string): Promise<string | null> {
-  const result = await prisma.$queryRaw<Array<{ evolution_state: string }>>(
-    Prisma.sql`SELECT evolution_state FROM v_card_state WHERE entity_id = ${entityId} AND entity_type = ${entityType} AND user_id = ${userId}`
+export async function getCardState(entityId: string, entityType: string, userId: string): Promise<{
+  evolution_state: string;
+  engaged_dimensions_count: number;
+  connection_count: number;
+  card_title: string;
+} | null> {
+  const result = await prisma.$queryRaw<Array<{
+    evolution_state: string;
+    engaged_dimensions_count: number;
+    connection_count: number;
+    card_title: string;
+  }>>(
+    Prisma.sql`SELECT evolution_state, engaged_dimensions_count, connection_count, card_title 
+               FROM v_card_evolution_state 
+               WHERE entity_id = ${entityId} AND entity_type = ${entityType} AND user_id = ${userId}`
   );
 
   if (result.length > 0) {
-    return result[0].evolution_state;
+    return result[0];
   }
   return null;
 } 

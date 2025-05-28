@@ -53,8 +53,10 @@ export type { TApiResponse } from './api';
 export type { 
     TAgentInput, 
     TAgentOutput, 
+    TAgentContext,
     TDialogueAgentInputPayload, 
     TDialogueAgentResult,
+    Tool,
     TToolInput, 
     TToolOutput,
     TNERToolInput,

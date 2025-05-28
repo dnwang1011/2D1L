@@ -3,6 +3,20 @@
  */
 
 /**
+ * Base interface for all tools in the system
+ */
+export interface Tool<TInput = any, TOutput = any> {
+  /** Name of the tool */
+  name: string;
+  /** Description of what the tool does */
+  description: string;
+  /** Version of the tool */
+  version: string;
+  /** Execute the tool with given input */
+  execute(input: TInput): Promise<TOutput>;
+}
+
+/**
  * Generic structure for tool input, wrapping a specific payload.
  * Contains common fields like request_id and region.
  */

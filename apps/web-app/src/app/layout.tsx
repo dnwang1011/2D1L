@@ -1,19 +1,12 @@
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google'; // Example font
+'use client';
+
 import './globals.css';
-import Header from '@/components/layout/Header'; // Import the Header
-import Canvas3D from '@/components/canvas/Canvas3D'; // Import the 3D Canvas
 
-// If Lora or other fonts are chosen in tailwind.config.ts, import them too
-// import { Lora } from 'next/font/google';
-
-const inter = Inter({ subsets: ['latin'] });
-// const lora = Lora({ subsets: ['latin'], weight: ["400", "700"] }); // Example
-
-export const metadata: Metadata = {
-  title: '2Dots1Line V4',
-  description: 'Connect your thoughts, illuminate your life.',
-};
+// V7 3-Layer Architecture Components
+import Canvas3D from '../components/canvas/Canvas3D';
+import ModalLayer from '../components/modal/ModalLayer';
+import OrbLayer from '../components/orb/OrbLayer';
+import HUDLayer from '../components/hud/HUDLayer';
 
 export default function RootLayout({
   children,
@@ -22,16 +15,33 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-backgroundLight text-textDark`}> {/* Ensure textDark for readability */}
-        <Canvas3D /> {/* Add the 3D Canvas as a background layer */}
-        <div style={{ position: 'relative', zIndex: 1 }}> {/* Content wrapper */}
-          <Header />
-          <main className="min-h-screen container mx-auto p-4">
+      <head>
+        <title>2dots1line</title>
+        <meta name="description" content="Connect your thoughts, illuminate your life." />
+      </head>
+      <body className="full-screen">
+        {/* V7 3-Layer Immersive Architecture */}
+        
+        {/* Layer 1: 3D Canvas Background (z-index: 0) */}
+        <div className="canvas-layer">
+          <Canvas3D />
+        </div>
+
+        {/* Layer 2: HUD Controls (z-index: 900) */}
+        <div className="hud-layer">
+          <HUDLayer />
+        </div>
+
+        {/* Layer 3: 2D Modal Content (z-index: 800) */}
+        <div className="modal-layer">
+          <ModalLayer>
             {children}
-          </main>
-          <footer className="bg-gray-800 text-white p-4 text-center mt-auto">
-            © 2025 2Dots1Line
-          </footer>
+          </ModalLayer>
+        </div>
+
+        {/* Layer 4: 3D Orb Companion (z-index: 1000) */}
+        <div className="orb-layer">
+          <OrbLayer />
         </div>
       </body>
     </html>

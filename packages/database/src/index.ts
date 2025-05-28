@@ -52,6 +52,7 @@ export { UserRepository, type CreateUserData } from './repositories/user.reposit
 export { MemoryRepository, type CreateMemoryUnitData, type CreateChunkData } from './repositories/memory.repository';
 export { ConceptRepository, type CreateConceptData, type CreateConceptRelationshipData } from './repositories/concept.repository';
 export { GrowthEventRepository, type CreateGrowthEventData } from './repositories/growth-event.repository';
+export { CardRepository, type CardData, type CardFilters } from './repositories/card.repository';
 
 // Ensure these environment variables are set in your .env file
 const DATABASE_URL = process.env.DATABASE_URL; // Used by Prisma internally
@@ -72,6 +73,7 @@ export class DatabaseService {
 
   constructor() {
     console.log('Initializing DatabaseService...');
+    console.log('DATABASE_URL:', DATABASE_URL ? `${DATABASE_URL.substring(0, 20)}...` : 'NOT SET');
 
     this.prismaClient = new PrismaClient({
       datasources: {
@@ -186,6 +188,52 @@ export class DatabaseService {
       console.log('Redis Client disconnected.');
     }
     console.log('DatabaseService disconnected.');
+  }
+
+  // Repository factory methods
+  public getUserRepository() {
+    const { UserRepository } = require('./repositories/user.repository');
+    return new UserRepository(this);
+  }
+
+  public getMemoryRepository() {
+    const { MemoryRepository } = require('./repositories/memory.repository');
+    return new MemoryRepository(this);
+  }
+
+  public getConceptRepository() {
+    const { ConceptRepository } = require('./repositories/concept.repository');
+    return new ConceptRepository(this);
+  }
+
+  public getGrowthEventRepository() {
+    const { GrowthEventRepository } = require('./repositories/growth-event.repository');
+    return new GrowthEventRepository(this);
+  }
+
+  public getCardRepository() {
+    const { CardRepository } = require('./repositories/card.repository');
+    return new CardRepository(this);
+  }
+
+  // Direct client access methods
+  public getPrismaClient(): PrismaClient {
+    return this.prismaClient;
+  }
+
+  public getNeo4j(): Driver {
+    return this.neo4jDriver;
+  }
+
+  public getWeaviate(): WeaviateClient {
+    return this.weaviateClient;
+  }
+
+  public getRedis(): RedisClient {
+    if (!this.redisClient || typeof this.redisClient.ping !== 'function') {
+        throw new Error('Redis client is not initialized or not functional. Check REDIS_URL.');
+    }
+    return this.redisClient;
   }
 }
 

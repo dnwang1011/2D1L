@@ -18,7 +18,10 @@
     "baseUrl": ".",
     "paths": {
       "@app/*": ["packages/*/src"],
-      "@services/*": ["services/*/src"]
+      "@services/*": ["services/*/src"],
+      "@2dots1line/cognitive-hub": ["services/cognitive-hub/src"],
+      "@2dots1line/database": ["packages/database/src"],
+      "@2dots1line/shared-types": ["packages/shared-types/src"]
     }
   },
   "exclude": ["node_modules", "**/*.test.ts", "**/*.spec.ts", "**/dist", "**/build", "**/.turbo"]

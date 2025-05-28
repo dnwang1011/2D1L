@@ -3,7 +3,8 @@ import { DatabaseService } from '../index'; // Adjust path if DatabaseService is
 
 export interface CreateUserData {
   email: string;
-  name?: string; // Changed from username to match schema
+  name?: string; // Maps to schema name field
+  username?: string; // Alias for name field
   password_hash: string;
   region?: string; // Made optional since it has a default
   preferences?: any; // Optional JSON field
@@ -20,11 +21,15 @@ export class UserRepository {
     if (!data.email || !data.password_hash) {
       throw new Error('Missing required fields for user creation: email, password_hash.');
     }
+    
+    // Handle username alias - use username if provided, otherwise use name
+    const nameValue = data.username || data.name;
+    
     try {
       const user = await this.prisma.users.create({
         data: {
           email: data.email,
-          name: data.name,
+          name: nameValue,
           hashed_password: data.password_hash,
           region: data.region || 'us', // Use default if not provided
           preferences: data.preferences,
@@ -66,5 +71,61 @@ export class UserRepository {
     }
   }
 
+  async findUserByName(name: string): Promise<UserModel | null> {
+    if (!name) return null;
+    try {
+      return await this.prisma.users.findFirst({
+        where: { name },
+      });
+    } catch (error) {
+      console.error(`Error finding user by name ${name}:`, error);
+      throw new Error("Could not find user by name.");
+    }
+  }
+
   // Optional: Add other methods as needed, e.g., updateUser, deleteUser
+  
+  /**
+   * Delete user by ID (hard delete from database)
+   * Note: In production, consider soft delete by setting account_status to 'deleted'
+   */
+  async deleteUser(id: string): Promise<UserModel | null> {
+    if (!id) return null;
+    try {
+      const deletedUser = await this.prisma.users.delete({
+        where: { user_id: id },
+      });
+      return deletedUser;
+    } catch (error: any) {
+      if (error.code === 'P2025') { // Record not found
+        throw new Error(`User with ID ${id} not found.`);
+      }
+      console.error(`Error deleting user ${id}:`, error);
+      throw new Error("Could not delete user.");
+    }
+  }
+
+  /**
+   * Soft delete user by setting account_status to 'deleted'
+   * Recommended for production to maintain data integrity
+   */
+  async softDeleteUser(id: string): Promise<UserModel | null> {
+    if (!id) return null;
+    try {
+      const updatedUser = await this.prisma.users.update({
+        where: { user_id: id },
+        data: {
+          account_status: 'deleted',
+          last_active_at: new Date(),
+        },
+      });
+      return updatedUser;
+    } catch (error: any) {
+      if (error.code === 'P2025') { // Record not found
+        throw new Error(`User with ID ${id} not found.`);
+      }
+      console.error(`Error soft deleting user ${id}:`, error);
+      throw new Error("Could not soft delete user.");
+    }
+  }
 } 

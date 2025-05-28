@@ -144,24 +144,75 @@ Initially implemented as a unified `cognitive-hub` service, with agents as modul
     *   Integrates with the event-driven growth model to track context and progress.
 
 2.  **Ingestion Analyst:**
-    *   Processes raw user inputs into structured knowledge for the graph.
-    *   Implements tiered analysis and extracts entities, relationships.
-    *   Creates `growth_events` for the Six-Dimensional Growth Model.
+    *   **Purpose:** Processes inputs into graph-ready elements and drives growth model through selective, strategic concept creation.
+    *   **V7 Enhancements:**
+        *   Writes to `growth_events` stream instead of directly updating progress tables.
+        *   Uses configurable rules (from Redis/config) to determine dimension activation from content.
+        *   **Strategic Concept Creation:** Implements two-phase entity processing:
+            *   **Phase 1 - Broad NER Detection:** Uses `ner.extract` tool to identify all entity types (PERSON, ORGANIZATION, LOCATION, DATE, EMAIL, PHONE, URL, etc.)
+            *   **Phase 2 - Selective Concept Creation:** Applies filtering logic to create `Concept` nodes only for strategically important entities:
+                *   **Core Named Entities:** PERSON, ORGANIZATION, LOCATION, DATE (create top-level `Concept` nodes)
+                *   **Thematic Concepts:** emotion, value, goal, skill, interest, struggle, life_event_theme (identified via keyword/pattern matching or LLM-based abstract concept extraction)
+                *   **Metadata Storage:** Other NER entities (EMAIL, PHONE, URL) stored as structured metadata in `MemoryUnit.attributes` or `Chunk.metadata` JSONB fields
+        *   **Growth Event Linkage:** `growth_events` are generated primarily for prioritized `Concept` types that align with the Six-Dimensional Growth Model.
+    *   **Tools:** `ner.extract`, `vision.caption`, `embed.queue_job`, `llm.extract_json`, `dedupe.match`.
+    *   **Input/Output Example:**
+        ```typescript
+        // Input: User journal entry
+        const input = {
+          content: "Had coffee with Sarah at Starbucks. Feeling grateful for our friendship. Want to improve my communication skills.",
+          memoryUnitId: "uuid-123"
+        };
+        
+        // Phase 1: NER Detection
+        const nerResults = await this.toolRegistry.executeTool('ner.extract', {
+          payload: { text_to_analyze: input.content }
+        });
+        // Returns: [
+        //   {text: "Sarah", type: "PERSON", confidence: 0.95},
+        //   {text: "Starbucks", type: "ORGANIZATION", confidence: 0.88},
+        //   {text: "grateful", type: "EMOTION", confidence: 0.82},
+        //   {text: "communication skills", type: "SKILL", confidence: 0.90}
+        // ]
+        
+        // Phase 2: Selective Concept Creation
+        // Creates Concept nodes for: Sarah (PERSON), Starbucks (ORGANIZATION), grateful (emotion), communication skills (skill)
+        // Generates growth_events for: self_know (gratitude emotion), self_act (skill improvement goal)
+        ```
 
 3.  **Retrieval Planner:**
-    *   Orchestrates hybrid retrieval strategies (vector, graph, relational).
-    *   Powers content for Card Gallery, GraphScene, and contextual responses.
-    *   Queries materialized views for efficient access to computed growth dimensions.
+    *   **Purpose:** Orchestrates hybrid retrieval.
+    *   **V7 Enhancements:**
+        *   Queries materialized views (e.g., `mv_entity_growth_progress`) and computed views (e.g., `v_card_evolution_state`) for efficient access to derived data.
+        *   Considers card evolution state and growth dimensions in ranking.
+    *   **Tools:** `embed.text`, `vector.similar`, `graph.query`, `rerank.cross_encode`.
 
 4.  **Insight Engine:**
-    *   Discovers patterns, connections, and hypotheses in the knowledge graph.
-    *   Generates "Orb's Dream Cards," suggests constellation completions, and creates challenges/quests.
-    *   Processes `growth_event` streams to identify patterns and trigger growth opportunities.
+    *   **Purpose:** Discovers patterns, connections, hypotheses.
+    *   **V7 Enhancements:**
+        *   Analyzes `growth_events` stream for temporal patterns and user progression.
+        *   Generates `DerivedArtifacts` for insights, quests, "Orb's Dream Cards."
+        *   Can trigger new `growth_events` or suggest challenges based on findings.
+    *   **Tools:** `graph.community_detect`, `graph.pattern_match`, `stats.correlate`, `llm.hypothesize`, `llm.evaluate_insight`.
 
 5.  **Ontology Steward:**
-    *   Manages controlled vocabularies, schema evolution, and visual mapping rules for the knowledge graph.
-    *   Ensures consistency in concept types, relationship labels, and growth dimensions.
-    *   Maintains configuration data in Redis or config files.
+    *   **Purpose:** Manages schema, vocabularies, rules, and **growth model configuration**.
+    *   **V7 Enhancements:**
+        *   **Primary Responsibility:** Manages configuration for growth dimensions, card evolution criteria, and UI visual mappings (stored in Redis/config files).
+        *   **Growth Rules Management:** Validates and updates `growth_model_rules.json` configuration, ensuring rule consistency and preventing conflicts.
+        *   **Configuration Validation:** Ensures growth dimension rules are syntactically correct, semantically meaningful, and don't create circular dependencies.
+        *   **Admin Interface Integration:** Provides APIs for authorized updates to growth rules configuration (future sprint capability).
+        *   Evaluates proposals for new terms/rules via an admin interface or automated triggers.
+        *   **Schema Evolution:** Manages controlled vocabularies and ensures backward compatibility during configuration updates.
+    *   **Tools:** `embed.text` (for semantic similarity of terms), `graph.schema_ops`, `llm.define`, `llm.classify_similarity`, `config.validate`, `config.update`.
+    *   **Configuration Responsibilities:**
+        ```typescript
+        // Example OntologySteward methods
+        async validateGrowthRules(rules: GrowthModelRules): Promise<ValidationResult>;
+        async updateGrowthConfiguration(updates: Partial<GrowthModelRules>): Promise<void>;
+        async getConfigurationHistory(): Promise<ConfigurationVersion[]>;
+        async rollbackConfiguration(versionId: string): Promise<void>;
+        ```
 
 #### 1.4.4 Deterministic Tools Layer
 
@@ -306,15 +357,38 @@ CREATE UNIQUE INDEX uidx_mv_entity_growth_progress ON mv_entity_growth_progress(
 
 #### 2.2.4 User Growth Profile (PostgreSQL `users.growth_profile`)
 
+*   **Purpose:** Stores **overall user growth summaries** for Dashboard display and high-level progress tracking.
 *   A JSONB column in the `users` table stores the aggregate score for each dimension for that user.
-*   Updated by a trigger or scheduled job that aggregates `mv_entity_growth_progress` per user.
+*   **Primary Usage:** Dashboard components (Cosmic Metrics, Dimensional Balance, overall progress visualization).
+*   **Data Source:** Updated by a trigger or scheduled job that aggregates `mv_entity_growth_progress` per user.
+*   **API Access:** Served via `/api/users/me/growth-profile` or `/api/dashboard/growth-summary` endpoints.
     ```json
     // Example users.growth_profile
     {
       "self_know": 0.75,
       "self_act": 0.50,
-      // ... and so on for all 6 dimensions
+      "self_show": 0.60,
+      "world_know": 0.45,
+      "world_act": 0.30,
+      "world_show": 0.55,
+      "last_updated": "2025-01-26T10:30:00Z",
+      "total_entities": 42,
+      "active_dimensions": 6
     }
+    ```
+
+**Distinction from Per-Entity Growth Data:**
+*   **Per-Entity Growth:** `mv_entity_growth_progress` materialized view provides **individual Card growth scores** across dimensions.
+*   **Usage:** Individual `Card.tsx` components display per-card growth indicators and evolution states.
+*   **API Access:** `CardService` methods (`getCards`, `getCardDetails`) fetch per-card growth data by querying/joining with `mv_entity_growth_progress`.
+*   **Data Flow:**
+    ```typescript
+    // Dashboard uses overall user profile
+    const userGrowth = await fetch('/api/users/me/growth-profile');
+    
+    // Card Gallery uses per-entity data
+    const cardData = await fetch('/api/cards?include=growth_progress');
+    // Returns cards with individual growth scores per dimension
     ```
 
 #### 2.2.5 Card Evolution States (Computed View in PostgreSQL)
@@ -373,6 +447,90 @@ CREATE INDEX idx_user_challenges_user_status ON user_challenges(user_id, status)
 ```
 *Challenge completion creates `growth_events` and potentially a `DerivedArtifact` of type "trophy" or "badge".*
 
+#### 2.2.6 Growth Model Configuration Management
+
+**Core Principle: Configuration over Schema/Code**
+*   All rules for activating growth dimensions **MUST NOT** be hardcoded within agent code.
+*   Growth activation logic is externalized to configuration files or Redis for runtime flexibility.
+
+**Configuration Structure:**
+```typescript
+// services/cognitive-hub/config/growth_model_rules.json
+{
+  "dimensions": {
+    "self_know": {
+      "name": "Self Knowledge",
+      "description": "Understanding one's inner world",
+      "activation_rules": {
+        "emotion_keywords": ["grateful", "anxious", "excited", "confused"],
+        "reflection_patterns": ["I feel", "I realize", "I understand"],
+        "base_delta": 0.1,
+        "source_multipliers": {
+          "journal_entry": 1.0,
+          "reflection": 1.5,
+          "conversation": 0.8
+        }
+      }
+    },
+    "self_act": {
+      "name": "Self Action",
+      "activation_rules": {
+        "action_keywords": ["goal", "plan", "practice", "improve", "learn"],
+        "commitment_patterns": ["I will", "I want to", "I'm going to"],
+        "base_delta": 0.15,
+        "source_multipliers": {
+          "goal_setting": 2.0,
+          "habit_tracking": 1.2
+        }
+      }
+    }
+    // ... other dimensions
+  },
+  "concept_type_mappings": {
+    "emotion": ["self_know", "world_know"],
+    "value": ["self_know", "self_show"],
+    "goal": ["self_act", "world_act"],
+    "skill": ["self_act", "self_show"]
+  }
+}
+```
+
+**Configuration Management:**
+*   **Loading:** `IngestionAnalyst` loads rules at startup and on configuration updates.
+*   **Management:** `OntologySteward` is responsible for validating and updating growth rules configuration.
+*   **Storage:** Configuration stored in Redis (`growth_model:rules`) for runtime access and version control.
+*   **Updates:** Admin interface (future sprint) allows authorized updates to growth rules via `OntologySteward` API.
+
+**Implementation Pattern:**
+```typescript
+// IngestionAnalyst.ts
+export class IngestionAnalyst extends BaseAgent {
+  private growthRules: GrowthModelRules;
+  
+  async initialize() {
+    this.growthRules = await this.configService.getGrowthRules();
+  }
+  
+  async processContentForGrowth(content: string, concepts: Concept[]): Promise<GrowthEvent[]> {
+    const events: GrowthEvent[] = [];
+    
+    for (const [dimKey, rules] of Object.entries(this.growthRules.dimensions)) {
+      const delta = this.calculateDimensionDelta(content, concepts, rules);
+      if (delta > 0) {
+        events.push({
+          dim_key: dimKey,
+          delta,
+          source: this.determineSource(content),
+          // ... other fields
+        });
+      }
+    }
+    
+    return events;
+  }
+}
+```
+
 ### 2.3 Schema Governance and Evolution
 
 The Ontology Steward manages:
@@ -384,15 +542,137 @@ The Ontology Steward manages:
 
 ### 2.4 Vector Embedding Strategy
 
-*   **Chunk Embeddings:** Each `Chunk.text_content` is embedded.
-*   **Concept Embeddings:** `Concept.name` + `Concept.description` embedded.
-*   **Multi-Modal Embeddings:** For images, audio (captions/transcripts first, then raw features).
-*   **Storage:** Embeddings in Weaviate, indexed by their PostgreSQL source ID (e.g., `cid`).
-*   **Models:**
-    *   US: Google Gemini/PaLM 2 embedding models.
-    *   China: DeepSeek embedding models.
-    *   Default: 1536-dim models (e.g., text-embedding-ada-002 equivalent or newer).
-    *   Models version-tagged for upgrade management.
+**Core Principle:** The 2dots1line system utilizes **externally generated vector embeddings**, leveraging powerful models such as Google's Gemini embedding models (for US region) and DeepSeek embedding models (for China region). This approach provides maximum flexibility, control over the embedding process, and ensures consistency across all vector operations.
+
+**Primary Embedding Generation:**
+*   Embeddings for `Chunk.text_content`, `Concept.name` + `Concept.description`, and textual representations of `Media` (e.g., captions) are generated by a dedicated embedding tool/service (e.g., `embed.text` tool within `packages/ai-clients/` or `services/cognitive-hub/src/tools/embedding-tools/`).
+*   This tool calls the appropriate regional LLM embedding API (Gemini or DeepSeek).
+*   The generated vector is then directly provided to Weaviate during data ingestion.
+
+**Weaviate Configuration:**
+*   For all Weaviate classes designed to store these externally generated embeddings (e.g., `UserConcept`, `UserMemory`, `UserArtifact`, `ConversationChunk`), the `vectorizer` property in the Weaviate schema **MUST** be set to `"none"`.
+*   This means Weaviate will not attempt to generate vectors itself for these classes but will store and index the vectors provided by our application.
+*   All vector generation is handled by the application layer through the `embed.text` tool.
+
+**Embedding Model Details:**
+*   Default models aim for a balance of quality and efficiency (e.g., 1536-dimensional models are common, such as `text-embedding-ada-002` or its generation's equivalents from Google/DeepSeek).
+*   Specific model names/versions used are managed via configuration and potentially selected by the `OntologySteward` or embedding tool based on region and task.
+*   All embeddings are version-tagged within their metadata (stored in Weaviate object properties or an associated tracking mechanism) to facilitate future model upgrades and re-embedding strategies.
+
+**Multi-Modal Embeddings (Future Consideration):**
+*   For future multi-modal capabilities (embedding images or audio directly), if models that produce vectors in a shared space with text embeddings are used (e.g., CLIP-style models), these vectors will also be generated externally and supplied to Weaviate with `vectorizer: "none"`.
+*   If a Weaviate multi-modal module becomes mature and suitable (e.g., `multi2vec-clip`), its use would be evaluated as a specific exception, but the default is external generation.
+
+**This strategy ensures that the application has full control over the embedding process and utilizes the most appropriate and up-to-date embedding models available through external APIs.**
+
+### 2.5 External Embedding Implementation Guide
+
+**Implementation Steps for External Embedding Strategy:**
+
+1. **Embedding Tool Implementation:**
+   ```typescript
+   // packages/ai-clients/src/embedding/embed-text.tool.ts
+   export class EmbedTextTool implements IExecutableTool<TTextEmbeddingInputPayload, TTextEmbeddingResult> {
+     async execute(input: TTextEmbeddingToolInput): Promise<TTextEmbeddingToolOutput> {
+       const { text_to_embed, model_id, embedding_type } = input.payload;
+       
+       // Route to appropriate regional client
+       const client = this.getRegionalClient(model_id);
+       const vector = await client.generateEmbedding(text_to_embed);
+       
+       return {
+         status: 'success',
+         result: {
+           vector,
+           embedding_metadata: {
+             model_id_used: model_id,
+             dimensions: vector.length,
+             token_count: this.estimateTokens(text_to_embed)
+           }
+         }
+       };
+     }
+   }
+   ```
+
+2. **Weaviate Object Creation with External Vectors:**
+   ```typescript
+   // packages/database/src/weaviate/repositories/concept.repository.ts
+   export class ConceptRepository {
+     async createConcept(concept: ConceptData, vector: number[]): Promise<void> {
+       await this.client.data
+         .creator()
+         .withClassName('UserConcept')
+         .withProperties({
+           externalId: concept.id,
+           userId: concept.userId,
+           name: concept.name,
+           description: concept.description,
+           embeddingModelVersion: concept.embeddingModelVersion
+         })
+         .withVector(vector) // Externally generated vector
+         .do();
+     }
+   }
+   ```
+
+3. **Integration in Ingestion Pipeline:**
+   ```typescript
+   // services/cognitive-hub/src/agents/ingestion/IngestionAnalyst.ts
+   export class IngestionAnalyst extends BaseAgent {
+     async processMemoryUnit(memoryUnit: MemoryUnit): Promise<void> {
+       // Extract concepts
+       const concepts = await this.extractConcepts(memoryUnit.content);
+       
+       for (const concept of concepts) {
+         // Generate embedding externally
+         const embeddingResult = await this.toolRegistry.executeTool('embed.text', {
+           payload: {
+             text_to_embed: `${concept.name}: ${concept.description}`,
+             model_id: this.getRegionalModelId(),
+             embedding_type: 'concept'
+           }
+         });
+         
+         // Store in Weaviate with external vector
+         await this.conceptRepository.createConcept(concept, embeddingResult.result.vector);
+       }
+     }
+   }
+   ```
+
+**Regional Model Configuration:**
+```typescript
+// packages/core-utils/src/config/embedding-models.ts
+export const EMBEDDING_MODELS = {
+  us: {
+    default: 'text-embedding-004',
+    models: {
+      'text-embedding-004': {
+        provider: 'google',
+        dimensions: 768,
+        maxTokens: 8192
+      }
+    }
+  },
+  cn: {
+    default: 'deepseek-embed-v1',
+    models: {
+      'deepseek-embed-v1': {
+        provider: 'deepseek',
+        dimensions: 1536,
+        maxTokens: 4096
+      }
+    }
+  }
+};
+```
+
+**Migration Strategy for Existing Weaviate Data:**
+1. **Schema Update:** Apply new schema with `vectorizer: "none"` to existing Weaviate instance
+2. **Data Migration:** Re-embed existing objects using external embedding tool
+3. **Validation:** Verify vector dimensions and semantic similarity preservation
+4. **Rollback Plan:** Maintain backup of original schema and data during transition
 
 ## 3. User Interface (UI) Layer Implementation
 
@@ -545,7 +825,7 @@ The V7 persistence layer uses a polyglot approach, detailed in `V7DataSchemaDesi
 
 ### 4.1 PostgreSQL (Relational Database)
 
-*   **Purpose:** Core entities, user information, raw content, event streams (`growth_events`, `user_activity_log`), challenge system, materialized views (`mv_entity_growth_progress`), and tables supporting graph data summaries (e.g., `entity_graph_connections_summary`).
+*   **Purpose:** Core entities, user information, raw content, event streams (`growth_events`, `user_activity_log`), challenge system, materialized views (`mv_entity_growth_progress`), and **performance-optimized relationship summaries**.
 *   **Key Tables & Schema:**
     *   `users`: Includes `growth_profile` (JSONB).
     *   `user_sessions`, `user_activity_log`.
@@ -556,8 +836,51 @@ The V7 persistence layer uses a polyglot approach, detailed in `V7DataSchemaDesi
     *   `challenge_templates`, `user_challenges`.
     *   `growth_events` (central to V7).
     *   `entity_vectors` (junction table for Weaviate IDs).
-*   **Views:** `mv_entity_growth_progress`, `v_card_evolution_state`, `user_growth_summary`.
-*   **Optimization:** Partitioning, JSONB indexing, read replicas, caching, archiving.
+
+**Relationship Data Strategy - Neo4j as Source of Truth:**
+
+*   **Primary Principle:** Neo4j serves as the **authoritative source** for all rich relationship data (`RELATED_TO`, `PERCEIVES`, etc.).
+
+*   **`concept_relationships` Table (Performance Cache):**
+    *   **Purpose:** **REMOVED** - Redundant with Neo4j relationships.
+    *   **Replacement Strategy:** Connection counts for `v_card_evolution_state` view sourced from `entity_graph_connections_summary` table.
+    *   **`entity_graph_connections_summary` Table:**
+        ```sql
+        CREATE TABLE entity_graph_connections_summary (
+          user_id UUID NOT NULL,
+          entity_id UUID NOT NULL,
+          entity_type TEXT NOT NULL,
+          connection_count INTEGER NOT NULL DEFAULT 0,
+          last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (user_id, entity_id, entity_type)
+        );
+        ```
+    *   **Population:** Periodic job queries Neo4j for connection counts and updates this summary table.
+    *   **Justification:** Avoids duplicating relationship semantics while providing fast access for card evolution calculations.
+
+*   **`user_perceived_concepts` Table (Analytical Cache):**
+    *   **Purpose:** **CONDITIONALLY RETAINED** for specific analytical performance optimization.
+    *   **Justification:** Complex array operations and aggregations on `(User)-[:PERCEIVES]->(Concept)` relationships may be inefficient in Neo4j for certain dashboard queries.
+    *   **Synchronization:** One-way sync from Neo4j to PostgreSQL via scheduled job.
+    *   **Schema:**
+        ```sql
+        CREATE TABLE user_perceived_concepts (
+          user_id UUID NOT NULL,
+          concept_id UUID NOT NULL,
+          perception_type TEXT NOT NULL,
+          current_salience FLOAT,
+          start_date DATE,
+          end_date DATE,
+          synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          PRIMARY KEY (user_id, concept_id, perception_type)
+        );
+        ```
+    *   **Alternative:** If analytical performance is acceptable with direct Neo4j queries, this table should be **REMOVED** to eliminate sync complexity.
+
+**Synchronization Strategy:**
+*   **Neo4j → PostgreSQL:** Scheduled jobs (every 15 minutes) update summary tables from Neo4j.
+*   **No Bi-directional Sync:** PostgreSQL relationship tables are read-only caches, never written to directly.
+*   **Consistency:** Accept eventual consistency for performance optimization; critical operations query Neo4j directly.
 
 ### 4.2 Neo4j (Graph Database)
 
@@ -572,16 +895,58 @@ The V7 persistence layer uses a polyglot approach, detailed in `V7DataSchemaDesi
 *   **Purpose:** Storing and querying vector embeddings for semantic search and similarity.
 *   **Collections (Classes):**
     *   `UserConcept`, `UserMemory`, `UserArtifact`, `ConversationChunk`.
-    *   Each class has properties for `userId`, relevant IDs (e.g., `conceptId`), text fields for vectorization, and filterable metadata (e.g., `tags`, `evolutionState`, `timestamp`).
-    *   Vectorizer: `text2vec-contextual` (e.g., Google PaLM 2 or DeepSeek equivalents).
-*   **Query Patterns:** K-Nearest Neighbors (with filters), Hybrid Search (BM25 + vector).
+    *   Each class has properties for `userId`, relevant IDs (e.g., `conceptId`), text fields for metadata, and filterable metadata (e.g., `tags`, `evolutionState`, `timestamp`).
+    *   **Vectorizer:** `"none"` - All embeddings are generated externally by the application using the `embed.text` tool and provided to Weaviate during object creation.
+*   **External Embedding Strategy:**
+    *   Embeddings generated by dedicated `embed.text` tool using regional models (Google Gemini for US, DeepSeek for China).
+    *   Application provides pre-computed vectors when creating/updating Weaviate objects.
+    *   No `moduleConfig` blocks for `text2vec-*` modules - Weaviate acts purely as vector storage and index.
+*   **Query Patterns:** K-Nearest Neighbors (with filters), Hybrid Search (vector similarity + metadata filtering).
 *   **Optimization:** HNSW indexing, vector quantization, filtered sharding, batch ingestion.
+
+**Example Weaviate Class Definition:**
+```json
+{
+  "class": "UserConcept",
+  "description": "User-specific concepts with externally generated embeddings",
+  "vectorizer": "none",
+  "properties": [
+    {
+      "name": "externalId",
+      "dataType": ["uuid"],
+      "description": "Reference to concept_id in PostgreSQL",
+      "indexInverted": true
+    },
+    {
+      "name": "userId",
+      "dataType": ["string"],
+      "description": "User ID for filtering",
+      "indexInverted": true
+    },
+    {
+      "name": "name",
+      "dataType": ["text"],
+      "description": "Concept name for metadata filtering",
+      "indexInverted": true
+    },
+    {
+      "name": "embeddingModelVersion",
+      "dataType": ["string"],
+      "description": "Version of external model used for vector generation",
+      "indexInverted": true
+    }
+  ]
+}
+```
 
 ### 4.4 Redis (Cache, Queues, Configuration & Real-time State)
 
-*   **Purpose:** Caching, temporary state, message queues, rate limiting, system configuration, real-time UI state.
+*   **Purpose:** Caching, temporary state, **active job queues**, rate limiting, system configuration, real-time UI state.
 *   **Key Caching Domains:** User context, query results, LLM responses.
-*   **Queue Structures (BullMQ):** Embedding Queue, Ingestion Processing Queue, Insight Generation Queue.
+*   **Active Queue Management (BullMQ):** 
+    *   **Primary Job Queues:** Embedding Queue, Ingestion Processing Queue, Insight Generation Queue.
+    *   **Queue Features:** Job prioritization, retry logic, dead letter queues, progress tracking.
+    *   **Worker Integration:** Background workers consume jobs from these Redis-based queues.
 *   **State Management:** Rate limiting, distributed locks, session management.
 *   **Configuration Storage:** Growth dimension definitions, card evolution rules, UI mapping rules.
 *   **Real-time State:**
@@ -590,6 +955,40 @@ The V7 persistence layer uses a polyglot approach, detailed in `V7DataSchemaDesi
     *   `card:{id}:growth`: Cached card growth data.
 *   **Pub/Sub Channels:**
     *   `user:{uid}:orb_state`, `user:{uid}:cards` (updates), `user:{uid}:challenges`, `user:{uid}:insights`, `user:{uid}:scene` (transitions).
+
+**Job Management Strategy:**
+
+*   **Active Job Queuing:** Redis/BullMQ handles all **active job management** (queuing, processing, retries).
+*   **`agent_processing_jobs` Table (PostgreSQL):**
+    *   **Purpose:** **Historical job logging** for auditing, analytics, and debugging.
+    *   **NOT for Active Queuing:** This table does **NOT** manage active job queues.
+    *   **Population:** Background workers move completed/failed job details from BullMQ to this table upon job completion.
+    *   **Schema:**
+        ```sql
+        CREATE TABLE agent_processing_jobs (
+          job_id UUID PRIMARY KEY,
+          user_id UUID,
+          agent_name TEXT NOT NULL,
+          job_type TEXT NOT NULL,
+          status TEXT NOT NULL, -- 'completed', 'failed', 'cancelled'
+          started_at TIMESTAMPTZ NOT NULL,
+          completed_at TIMESTAMPTZ,
+          duration_ms INTEGER,
+          input_payload JSONB,
+          output_result JSONB,
+          error_details JSONB,
+          queue_name TEXT NOT NULL
+        );
+        ```
+    *   **Data Flow:**
+        ```typescript
+        // Job Lifecycle
+        1. Job Created → BullMQ Queue (Redis)
+        2. Worker Processes → Job Status Updates in BullMQ
+        3. Job Completes/Fails → Worker logs to agent_processing_jobs (PostgreSQL)
+        4. Historical Analysis → Query agent_processing_jobs table
+        ```
+
 *   **Optimization:** TTL policies, LRU eviction, Redis Cluster, data compression.
 
 ### 4.5 Database Integration Layer
@@ -622,12 +1021,41 @@ The V7 cognitive agents operate within the `cognitive-hub` service, leveraging t
     *   **Tools:** `emotionDetector`, `messageClassifier`, `retrieval.plan_and_execute`, `insight.get_relevant`, `llm.chat`.
 
 2.  **Ingestion Analyst:**
-    *   **Purpose:** Processes inputs into graph-ready elements and drives growth model.
+    *   **Purpose:** Processes inputs into graph-ready elements and drives growth model through selective, strategic concept creation.
     *   **V7 Enhancements:**
         *   Writes to `growth_events` stream instead of directly updating progress tables.
         *   Uses configurable rules (from Redis/config) to determine dimension activation from content.
-        *   Tiered processing logic remains, but outputs include events.
+        *   **Strategic Concept Creation:** Implements two-phase entity processing:
+            *   **Phase 1 - Broad NER Detection:** Uses `ner.extract` tool to identify all entity types (PERSON, ORGANIZATION, LOCATION, DATE, EMAIL, PHONE, URL, etc.)
+            *   **Phase 2 - Selective Concept Creation:** Applies filtering logic to create `Concept` nodes only for strategically important entities:
+                *   **Core Named Entities:** PERSON, ORGANIZATION, LOCATION, DATE (create top-level `Concept` nodes)
+                *   **Thematic Concepts:** emotion, value, goal, skill, interest, struggle, life_event_theme (identified via keyword/pattern matching or LLM-based abstract concept extraction)
+                *   **Metadata Storage:** Other NER entities (EMAIL, PHONE, URL) stored as structured metadata in `MemoryUnit.attributes` or `Chunk.metadata` JSONB fields
+        *   **Growth Event Linkage:** `growth_events` are generated primarily for prioritized `Concept` types that align with the Six-Dimensional Growth Model.
     *   **Tools:** `ner.extract`, `vision.caption`, `embed.queue_job`, `llm.extract_json`, `dedupe.match`.
+    *   **Input/Output Example:**
+        ```typescript
+        // Input: User journal entry
+        const input = {
+          content: "Had coffee with Sarah at Starbucks. Feeling grateful for our friendship. Want to improve my communication skills.",
+          memoryUnitId: "uuid-123"
+        };
+        
+        // Phase 1: NER Detection
+        const nerResults = await this.toolRegistry.executeTool('ner.extract', {
+          payload: { text_to_analyze: input.content }
+        });
+        // Returns: [
+        //   {text: "Sarah", type: "PERSON", confidence: 0.95},
+        //   {text: "Starbucks", type: "ORGANIZATION", confidence: 0.88},
+        //   {text: "grateful", type: "EMOTION", confidence: 0.82},
+        //   {text: "communication skills", type: "SKILL", confidence: 0.90}
+        // ]
+        
+        // Phase 2: Selective Concept Creation
+        // Creates Concept nodes for: Sarah (PERSON), Starbucks (ORGANIZATION), grateful (emotion), communication skills (skill)
+        // Generates growth_events for: self_know (gratitude emotion), self_act (skill improvement goal)
+        ```
 
 3.  **Retrieval Planner:**
     *   **Purpose:** Orchestrates hybrid retrieval.
@@ -645,11 +1073,23 @@ The V7 cognitive agents operate within the `cognitive-hub` service, leveraging t
     *   **Tools:** `graph.community_detect`, `graph.pattern_match`, `stats.correlate`, `llm.hypothesize`, `llm.evaluate_insight`.
 
 5.  **Ontology Steward:**
-    *   **Purpose:** Manages schema, vocabularies, and rules.
+    *   **Purpose:** Manages schema, vocabularies, rules, and **growth model configuration**.
     *   **V7 Enhancements:**
-        *   Manages configuration for growth dimensions, card evolution criteria, and UI visual mappings (stored in Redis/config files).
+        *   **Primary Responsibility:** Manages configuration for growth dimensions, card evolution criteria, and UI visual mappings (stored in Redis/config files).
+        *   **Growth Rules Management:** Validates and updates `growth_model_rules.json` configuration, ensuring rule consistency and preventing conflicts.
+        *   **Configuration Validation:** Ensures growth dimension rules are syntactically correct, semantically meaningful, and don't create circular dependencies.
+        *   **Admin Interface Integration:** Provides APIs for authorized updates to growth rules configuration (future sprint capability).
         *   Evaluates proposals for new terms/rules via an admin interface or automated triggers.
-    *   **Tools:** `embed.text` (for semantic similarity of terms), `graph.schema_ops`, `llm.define`, `llm.classify_similarity`.
+        *   **Schema Evolution:** Manages controlled vocabularies and ensures backward compatibility during configuration updates.
+    *   **Tools:** `embed.text` (for semantic similarity of terms), `graph.schema_ops`, `llm.define`, `llm.classify_similarity`, `config.validate`, `config.update`.
+    *   **Configuration Responsibilities:**
+        ```typescript
+        // Example OntologySteward methods
+        async validateGrowthRules(rules: GrowthModelRules): Promise<ValidationResult>;
+        async updateGrowthConfiguration(updates: Partial<GrowthModelRules>): Promise<void>;
+        async getConfigurationHistory(): Promise<ConfigurationVersion[]>;
+        async rollbackConfiguration(versionId: string): Promise<void>;
+        ```
 
 ### 5.3 Deterministic Tools Layer
 
@@ -659,11 +1099,21 @@ The V7 cognitive agents operate within the `cognitive-hub` service, leveraging t
 
 *   **Text Processing & NLP:** `ner.extract`, `llm.extract_json`, `llm.chat`, `llm.summarize`.
 *   **Visual Processing:** `vision.caption`, `vision.extract_entities`.
-*   **Embedding & Vectorization:** `embed.text`, `embed.queue_job`.
+*   **Embedding & Vectorization:** `embed.text` (primary external embedding generator), `embed.queue_job`.
 *   **Vector Operations:** `vector.similar`, `rerank.cross_encode`.
 *   **Graph Operations:** `graph.query`, `graph.community_detect`, `graph.schema_ops`.
 *   **Statistical Analysis:** `stats.correlate`, `stats.trend`.
 *   **Utility Functions:** `dedupe.match`, `util.validate_json`.
+
+**Key Tool: `embed.text`**
+*   **Purpose:** Primary tool for generating vector embeddings using external LLM APIs (Google Gemini, DeepSeek).
+*   **Input:** `{text_to_embed: string, model_id: string, embedding_type?: string}`
+*   **Output:** `{vector: number[], embedding_metadata: {model_id_used, dimensions, token_count}}`
+*   **Regional Models:**
+    *   US: Google Gemini embedding models (e.g., `text-embedding-004`)
+    *   China: DeepSeek embedding models (e.g., `deepseek-embed-v1`)
+*   **Integration:** Generates vectors that are directly provided to Weaviate during object creation/update.
+*   **Performance:** Optimized for batch processing, includes retry logic and rate limiting.
 
 #### 5.3.2 Tool Registry & Discovery
 
@@ -951,3 +1401,94 @@ This V7 specification systematically implements the refined design principles:
 This V7 Ultimate Technical Specification provides a comprehensive blueprint for building 2dots1line. It aims to balance sophisticated AI and knowledge graph capabilities with an emotionally resonant, immersive user experience, all built upon a flexible and robust technical foundation.
 
 ---
+
+**Content Storage Strategy:**
+
+*   **`MemoryUnit.content` (TEXT):** Stores **processed/transcribed text content** ready for analysis and display.
+    *   For text inputs: Cleaned, normalized user input (typos corrected, formatting standardized).
+    *   For media inputs: Extracted text content (OCR results, transcriptions, captions).
+    *   For documents: Extracted text content from PDFs, Word docs, etc.
+
+*   **`raw_content` Table (DEPRECATED):**
+    *   **Purpose:** Originally intended for storing **unmodified user input** before processing.
+    *   **Current Status:** **MARKED FOR REMOVAL** - Redundant with current architecture.
+    *   **Replacement Strategy:** 
+        *   Text inputs: Store original in `MemoryUnit.content` if no processing needed, or maintain processing history in `user_activity_log`.
+        *   Binary files: Store in object storage (S3/COS) and reference via `Media.url`.
+
+*   **`Media.url` (TEXT):** References **original binary files** stored in object storage.
+    *   Images, audio, video, documents stored in S3/COS.
+    *   `Media.caption` stores extracted/generated text descriptions.
+    *   `MemoryUnit.content` contains the textual representation derived from media.
+
+*   **Content Processing Flow:**
+    ```typescript
+    // Text Input
+    User Input → MemoryUnit.content (direct storage)
+    
+    // Media Input  
+    User Upload → S3/COS → Media.url (reference)
+                ↓
+    OCR/Transcription → MemoryUnit.content (extracted text)
+                     → Media.caption (description)
+    
+    // Document Input
+    File Upload → S3/COS → Media.url (reference)
+                ↓
+    Text Extraction → MemoryUnit.content (extracted text)
+    ```
+
+*   **Migration Plan:** Remove `raw_content` table in next schema migration, ensure all content properly categorized between `MemoryUnit.content` and `Media` storage.
+
+## 11. AI Agent Reporting Standards
+
+### 11.1 Development Progress Reporting
+
+**Mandatory Task Referencing:**
+*   AI agents providing development logs or progress updates **MUST** clearly reference the specific Task ID from the official project roadmap.
+*   Format: `"Progress on [Sprint].[Task]: [Description]"` (e.g., "Progress on S3.T1: Implemented NER tool with selective concept creation")
+*   If work deviates from or expands upon a roadmap task, this **MUST** be explicitly noted and justified.
+*   New internal sub-tasks should be linked back to the overarching roadmap task they contribute to.
+
+**Example Reporting Format:**
+```
+## Development Log Entry - 2025-01-26
+
+### Task: S3.T1 - Implement NER Tool for Entity Extraction
+
+**Completed:**
+- ✅ Created comprehensive NER tool at `/services/tools/text-tools/src/ner.ts`
+- ✅ Implemented 7 entity types: PERSON, ORGANIZATION, LOCATION, DATE, EMAIL, PHONE, URL
+- ✅ Added confidence scoring and context extraction
+- ✅ Created unit tests with 14/15 passing
+
+**Deviations/Expansions:**
+- Added performance timing metrics (not in original spec) - justified for monitoring
+- Implemented deduplication logic (expansion) - prevents duplicate entity extraction
+
+**Next Steps for S3.T1:**
+- Fix remaining test failure in convenience function
+- Integration with IngestionAnalyst for selective concept creation
+
+**Related Tasks:**
+- Contributes to S3.T2 (Ingestion Pipeline) through entity extraction capability
+```
+
+**Quality Standards:**
+*   Progress reports must include specific file paths, implementation details, and test results.
+*   Any assumptions made due to specification ambiguities must be clearly stated.
+*   Links to related tasks and dependencies should be explicitly noted.
+*   Human verification steps should be clearly outlined when AI cannot directly test functionality.
+
+### 11.2 Code Documentation Standards
+
+**Inline Documentation:**
+*   All AI-generated code must include clear JSDoc/TSDoc comments for public APIs.
+*   Complex algorithms or business logic must include explanatory comments.
+*   Configuration files must include inline comments explaining purpose and usage.
+
+**Commit Message Standards:**
+*   Format: `feat(TaskID): Brief description`
+*   Examples: `feat(S3.T1): Add NER tool with 7 entity types`, `fix(S3.T1): Resolve regex pattern issues in person name extraction`
+
+This standardization ensures human reviewers can efficiently track progress against the planned workstreams and maintain project coherence across AI-assisted development cycles.

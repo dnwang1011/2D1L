@@ -1,8 +1,15 @@
-// Main entry point for Cognitive Hub service
-import dotenv from 'dotenv';
-dotenv.config({ path: '../../.env' }); // Load root .env if needed
+/**
+ * Cognitive Hub - Main Export
+ * Exports agents, services, and tools for use by other packages
+ */
 
-console.log('Cognitive Hub Service initialized (placeholder)');
+// Export services
+export * from './services';
 
-// Export agents or a central agent registry/service later
-// export * from './agents'; 
+// Export agents
+export * from './agents';
+
+// Export types from IngestionAnalyst
+export type { IngestionAnalystPayload, IngestionAnalystResult } from './agents/ingestion/IngestionAnalyst';
+
+// Service-level utilities and configurations can be added here 

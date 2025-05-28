@@ -1,6 +1,6 @@
 import { ToolRegistry, Tool } from '@2dots1line/tool-registry'; // Adjust path if needed
 import { DatabaseService } from '@2dots1line/database'; // Adjust path if needed
-import { TAgentInput, TAgentOutput, TAgentContext } from '@2dots1line/shared-types'; // Adjust path for shared types
+import { TAgentInput, TAgentOutput, TAgentContext, TToolInput, TToolOutput } from '@2dots1line/shared-types'; // Adjust path for shared types
 
 export abstract class BaseAgent<TInput extends TAgentInput = TAgentInput, TOutput extends TAgentOutput = TAgentOutput> {
   public readonly name: string;
@@ -30,22 +30,22 @@ export abstract class BaseAgent<TInput extends TAgentInput = TAgentInput, TOutpu
   /**
    * Executes a registered tool by its name.
    */
-  protected async executeTool<TToolInput, TToolOutput>(
+  protected async executeTool<TInput extends TToolInput<any>, TOutput extends TToolOutput<any>>(
     toolName: string,
-    input: TToolInput,
+    input: TInput,
     // context might include things like userId for tool execution context
     context?: TAgentContext 
-  ): Promise<TToolOutput> {
+  ): Promise<TOutput> {
     const tool = this.availableTools.get(toolName);
     if (!tool) {
       throw new Error(`Tool "${toolName}" not registered or available for agent "${this.name}".`);
     }
     console.log(`Agent [${this.name}] executing tool: ${toolName} with input:`, input);
     try {
-      // Pass agent context to the tool if the tool's execute method expects it
-      // This is a simple passthrough; specific tools might need more tailored context.
-      const result = await this.toolRegistry.executeTool(toolName, input, context);
-      return result as TToolOutput;
+      // Note: context is not passed to toolRegistry.executeTool as it only accepts toolName and input
+      // Context handling would need to be implemented within the tool itself if needed
+      const result = await this.toolRegistry.executeTool(toolName, input);
+      return result as TOutput;
     } catch (error) {
       console.error(`Agent [${this.name}] error executing tool "${toolName}":`, error);
       throw error; // Rethrow or handle as per agent's error strategy

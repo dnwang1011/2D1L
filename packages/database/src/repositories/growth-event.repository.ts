@@ -8,7 +8,6 @@ export interface CreateGrowthEventData {
   dim_key: string;
   delta: number;
   source: string;
-  metadata?: Record<string, any>;
 }
 
 export class GrowthEventRepository {
@@ -32,7 +31,6 @@ export class GrowthEventRepository {
           delta: data.delta,
           source: data.source,
           created_at: new Date(),
-          metadata: data.metadata,
         },
       });
     } catch (error: any) {
@@ -187,10 +185,6 @@ export class GrowthEventRepository {
       dim_key: 'self_know',
       delta: 0.1,
       source,
-      metadata: {
-        auto_generated: true,
-        reason: 'memory_creation',
-      },
     });
   }
 } 

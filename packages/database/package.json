@@ -1,33 +1,35 @@
 {
   "name": "@2dots1line/database",
   "version": "0.1.0",
-  "description": "Database access layer for 2dots1line V4",
+  "description": "Database access layer for 2dots1line V7",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "prisma": {
-    "schema": "../../apps/backend-api/prisma/schema.prisma",
-    "seed": "../../apps/backend-api/prisma/seed.ts"
+    "schema": "./prisma/schema.prisma",
+    "seed": "./prisma/seed.ts"
   },
   "scripts": {
     "build": "tsc",
     "lint": "eslint src --ext .ts,.tsx",
     "test": "jest",
     "clean": "rimraf dist",
-    "prisma:generate": "npx prisma generate --schema=../../apps/backend-api/prisma/schema.prisma"
+    "prisma:generate": "npx prisma generate",
+    "prisma:migrate": "npx prisma migrate dev",
+    "prisma:studio": "npx prisma studio"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^6.6.0",
+    "ioredis": "^5.3.2",
     "neo4j-driver": "^5.17.0",
-    "weaviate-ts-client": "^2.0.0",
-    "ioredis": "^5.3.2"
+    "weaviate-ts-client": "^2.0.0"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.0",
-    "@types/node": "^18.0.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^18.19.14",
+    "dotenv": "^16.4.5",
+    "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "ts-jest": "^29.1.2",
-    "prisma": "^5.22.0",
-    "rimraf": "^5.0.1",
     "typescript": "^5.3.3"
   }
-} 
+}

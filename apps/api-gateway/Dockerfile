@@ -1,37 +1,72 @@
-# 1. Base image
+# Multi-stage build for API Gateway in monorepo
 FROM node:18-alpine As builder
 
-# 2. Set working directory
+# Set working directory to the monorepo root
 WORKDIR /usr/src/app
 
-# 3. Copy package.json and package-lock.json (or yarn.lock)
+# Copy package.json files from root and relevant packages
 COPY package*.json ./
+COPY packages/database/package*.json ./packages/database/
+COPY packages/shared-types/package*.json ./packages/shared-types/
+COPY packages/tool-registry/package*.json ./packages/tool-registry/
+COPY packages/agent-framework/package*.json ./packages/agent-framework/
+COPY services/cognitive-hub/package*.json ./services/cognitive-hub/
+COPY apps/api-gateway/package*.json ./apps/api-gateway/
 
-# 4. Install dependencies for build (including devDependencies for tsc)
-RUN npm ci
+# Install all dependencies at root level
+RUN npm install
 
-# 5. Copy the rest of the application code
-COPY . .
+# Copy tsconfig files
+COPY tsconfig.base.json ./
+COPY packages/database/tsconfig.json ./packages/database/
+COPY packages/shared-types/tsconfig.json ./packages/shared-types/
+COPY packages/tool-registry/tsconfig.json ./packages/tool-registry/
+COPY packages/agent-framework/tsconfig.json ./packages/agent-framework/
+COPY services/cognitive-hub/tsconfig.json ./services/cognitive-hub/
+COPY apps/api-gateway/tsconfig.json ./apps/api-gateway/
 
-# 6. Build TypeScript code
-RUN npm run build
+# Copy source code for packages that api-gateway depends on
+COPY packages/database/ ./packages/database/
+COPY packages/shared-types/ ./packages/shared-types/
+COPY packages/tool-registry/ ./packages/tool-registry/
+COPY packages/agent-framework/ ./packages/agent-framework/
+COPY services/cognitive-hub/ ./services/cognitive-hub/
+
+# Generate Prisma client first
+RUN cd packages/database && npx prisma generate
+
+# Build the database package
+RUN cd packages/database && npm run build
+
+# Build shared-types package
+RUN cd packages/shared-types && npm run build
+
+# Build tool-registry package
+RUN cd packages/tool-registry && npm run build
+
+# Build agent-framework package
+RUN cd packages/agent-framework && npm run build
+
+# Build cognitive-hub service
+RUN cd services/cognitive-hub && npm run build
+
+# Copy api-gateway source and build it
+COPY apps/api-gateway/ ./apps/api-gateway/
+RUN cd apps/api-gateway && npm run build
 
 # --- Release Stage ---
 FROM node:18-alpine
 
 WORKDIR /usr/src/app
 
-# Copy package.json and package-lock.json for production dependencies
-COPY package*.json ./
+# Copy the entire built workspace
+COPY --from=builder /usr/src/app ./
 
-# Install only production dependencies
-RUN npm ci --only=production
+# Set working directory to api-gateway
+WORKDIR /usr/src/app/apps/api-gateway
 
-# Copy built application from builder stage
-COPY --from=builder /usr/src/app/dist ./dist
-
-# 7. Expose the port (should match .env or default in server.ts)
+# Expose the port
 EXPOSE 3001
 
-# 8. Define the CMD to start the application
-CMD ["node", "dist/server.js"] 
+# Start the application
+CMD ["node", "dist/src/server.js"] 

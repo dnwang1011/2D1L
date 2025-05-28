@@ -2,12 +2,206 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  /* Example: Apply a default background and text color from V4 theme */
-  /* This will depend on whether you default to light or dark mode */
-  /* background-color: theme('colors.backgroundDark'); */
-  /* color: theme('colors.textLight'); */
-  @apply bg-backgroundLight text-textDark;
+/* V7 Design System Global Styles */
+
+@layer base {
+  /* Import V7 Typography Fonts */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=General+Sans:wght@300;400;500;600;700&display=swap');
+  
+  /* Global Reset for V7 3-Layer Architecture */
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden; /* Prevent scrolling in immersive experience */
+    font-family: theme('fontFamily.plain');
+    background: theme('colors.ref.palette.neutral.deepCosmos');
+  }
+
+  /* Ensure full viewport usage */
+  #__next, [data-nextjs-scroll-focus-boundary] {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* Custom scrollbar for modal content */
+  .modal-content::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  .modal-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+  
+  .modal-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+  }
+  
+  .modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+  }
 }
 
-/* Add other global styles or component layer customizations here */ 
+@layer components {
+  /* V7 Glassmorphism Base Component */
+  .glass-panel {
+    background: theme('colors.sys.color.glass.background');
+    backdrop-filter: blur(20px);
+    border: 1px solid theme('colors.sys.color.glass.border');
+    border-radius: theme('borderRadius.large');
+    box-shadow: theme('boxShadow.glass');
+  }
+
+  /* V7 3D Canvas Layer */
+  .canvas-layer {
+    @apply fixed inset-0 pointer-events-auto;
+    z-index: theme('zIndex.canvas');
+  }
+
+  /* V7 2D Modal Layer */
+  .modal-layer {
+    @apply fixed inset-0 pointer-events-none;
+    z-index: theme('zIndex.modal');
+  }
+
+  .modal-layer > * {
+    @apply pointer-events-auto;
+  }
+
+  /* V7 3D Orb Layer */
+  .orb-layer {
+    @apply fixed inset-0 pointer-events-none;
+    z-index: theme('zIndex.orb');
+  }
+
+  /* V7 HUD Layer */
+  .hud-layer {
+    @apply fixed inset-0 pointer-events-none;
+    z-index: theme('zIndex.hud');
+  }
+
+  .hud-layer > * {
+    @apply pointer-events-auto;
+  }
+
+  /* V7 Card Component */
+  .card-base {
+    @apply glass-panel p-lg rounded-large;
+    min-height: 200px;
+    transition: all theme('transitionDuration.medium1') theme('transitionTimingFunction.standard');
+  }
+
+  .card-hover {
+    @apply scale-105;
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: theme('boxShadow.elevation-3');
+  }
+
+  /* V7 Button Components */
+  .btn-primary {
+    background: theme('colors.sys.color.primary');
+    color: theme('colors.sys.color.onPrimary');
+    padding: theme('spacing.md') theme('spacing.lg');
+    border-radius: theme('borderRadius.medium');
+    font-size: theme('fontSize.label-large.0');
+    line-height: theme('fontSize.label-large.1.lineHeight');
+    font-weight: theme('fontSize.label-large.1.fontWeight');
+    transition: all theme('transitionDuration.short2') theme('transitionTimingFunction.standard');
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-primary:hover {
+    transform: scale(1.05);
+    box-shadow: theme('boxShadow.elevation-2');
+  }
+
+  .btn-secondary {
+    background: theme('colors.sys.color.secondary');
+    color: theme('colors.sys.color.onSecondary');
+    padding: theme('spacing.md') theme('spacing.lg');
+    border-radius: theme('borderRadius.medium');
+    font-size: theme('fontSize.label-large.0');
+    line-height: theme('fontSize.label-large.1.lineHeight');
+    font-weight: theme('fontSize.label-large.1.fontWeight');
+    transition: all theme('transitionDuration.short2') theme('transitionTimingFunction.standard');
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-secondary:hover {
+    transform: scale(1.05);
+    box-shadow: theme('boxShadow.elevation-2');
+  }
+}
+
+@layer utilities {
+  /* V7 Animation Utilities */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out forwards;
+  }
+
+  /* V7 Layout Utilities */
+  .full-screen {
+    @apply w-screen h-screen;
+  }
+
+  .center-absolute {
+    @apply absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2;
+  }
+
+  .center-fixed {
+    @apply fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2;
+  }
+}
+
+/* V7 Keyframe Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { 
+    box-shadow: 0 0 20px theme('colors.ref.palette.accent.journeyGold / 30%');
+    opacity: 1;
+  }
+  50% { 
+    box-shadow: 0 0 40px theme('colors.ref.palette.accent.journeyGold / 60%');
+    opacity: 0.8;
+  }
+}
+
+@keyframes fade-in {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* V7 Responsive Design */
+@media (max-width: 768px) {
+  .modal-layer {
+    @apply p-md;
+  }
+  
+  .card-base {
+    min-height: 150px;
+    @apply p-md;
+  }
+} 

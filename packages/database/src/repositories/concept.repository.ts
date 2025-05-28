@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { DatabaseService } from '../index';
 
 export interface CreateConceptData {
@@ -7,7 +7,7 @@ export interface CreateConceptData {
   type: string;
   description?: string;
   confidence?: number;
-  metadata?: Record<string, any>;
+  metadata?: Prisma.InputJsonValue;
 }
 
 export interface CreateConceptRelationshipData {
@@ -15,10 +15,9 @@ export interface CreateConceptRelationshipData {
   source_concept_id: string;
   target_concept_id: string;
   relationship_type: string;
-  relationship_label: string;
-  weight?: number;
+  strength?: number;
   context_muid?: string;
-  metadata?: Record<string, any>;
+  metadata?: Prisma.InputJsonValue;
 }
 
 export class ConceptRepository {
@@ -44,14 +43,19 @@ export class ConceptRepository {
 
       if (existing) {
         // Update existing concept with new data if provided
+        const updateData: any = {
+          description: data.description || existing.description,
+          confidence: data.confidence ?? existing.confidence,
+          last_updated_ts: new Date(),
+        };
+        
+        if (data.metadata !== undefined) {
+          updateData.metadata = data.metadata;
+        }
+        
         return await this.prisma.concepts.update({
           where: { concept_id: existing.concept_id },
-          data: {
-            description: data.description || existing.description,
-            confidence: data.confidence ?? existing.confidence,
-            metadata: data.metadata || existing.metadata,
-            last_updated_ts: new Date(),
-          },
+          data: updateData,
         });
       }
 
@@ -124,51 +128,19 @@ export class ConceptRepository {
   }
 
   /**
-   * Create a relationship between concepts
+   * Create a relationship between concepts - DEPRECATED: Use Neo4j for relationships
+   * This method is kept for backward compatibility but should not be used
    */
   async createConceptRelationship(data: CreateConceptRelationshipData) {
-    try {
-      return await this.prisma.concept_relationships.create({
-        data: {
-          user_id: data.user_id,
-          source_concept_id: data.source_concept_id,
-          target_concept_id: data.target_concept_id,
-          relationship_type: data.relationship_type,
-          relationship_label: data.relationship_label,
-          weight: data.weight || 1.0,
-          context_muid: data.context_muid,
-          metadata: data.metadata,
-          created_at: new Date(),
-        },
-      });
-    } catch (error: any) {
-      if (error.code === 'P2003') {
-        throw new Error('Referenced concept does not exist.');
-      }
-      if (error.code === 'P2002') {
-        throw new Error('Relationship between these concepts already exists.');
-      }
-      throw error;
-    }
+    throw new Error('Concept relationships are now handled by Neo4j. Use Neo4j repository instead.');
   }
 
   /**
-   * Get relationships for a concept
+   * Get relationships for a concept - DEPRECATED: Use Neo4j for relationships
+   * This method is kept for backward compatibility but should not be used
    */
   async getConceptRelationships(conceptId: string, userId: string) {
-    return await this.prisma.concept_relationships.findMany({
-      where: {
-        user_id: userId,
-        OR: [
-          { source_concept_id: conceptId },
-          { target_concept_id: conceptId },
-        ],
-      },
-      include: {
-        source_concept: true,
-        target_concept: true,
-      },
-    });
+    throw new Error('Concept relationships are now handled by Neo4j. Use Neo4j repository instead.');
   }
 
   /**

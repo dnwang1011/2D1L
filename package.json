@@ -6,7 +6,6 @@
     "apps/*",
     "packages/*",
     "services/*",
-    "workers/*",
     "3d-assets/*"
   ],
   "scripts": {
@@ -14,6 +13,7 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "storybook": "turbo run storybook",
     "format": "prettier --write \"**/*.{ts,tsx,md,glsl}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,glsl}\"",
     "prepare": "npx husky install",
@@ -41,5 +41,9 @@
   "engines": {
     "node": ">=18.0.0"
   },
-  "packageManager": "npm@11.3.0"
+  "packageManager": "npm@11.3.0",
+  "dependencies": {
+    "@prisma/client": "^6.6.0",
+    "prisma": "^6.8.2"
+  }
 }

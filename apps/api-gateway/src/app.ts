@@ -6,7 +6,9 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '../../.env' }); // Assuming .env is in monorepo root, or adjust path
 
 // Import routes (to be created)
-import authRoutes from './routes/auth.routes';
+import { authRoutes } from './routes/auth.routes';
+import { cardRoutes } from './routes/card.routes';
+import userRoutes from './routes/user.routes';
 
 const app: Express = express();
 
@@ -17,11 +19,13 @@ app.use(express.urlencoded({ extended: true })); // Parse URL-encoded request bo
 
 // Basic Health Check Route
 app.get('/api/health', (req: Request, res: Response) => {
-  res.status(200).json({ status: 'UP', message: 'API Gateway is healthy' });
+  res.status(200).json({ message: 'API is running' });
 });
 
-// API Routes (placeholders for now)
+// API Routes - Implements Directive 2: User growth profile endpoints
 app.use('/api/auth', authRoutes);
+app.use('/api/cards', cardRoutes);
+app.use('/api/users', userRoutes);
 
 // Global Error Handler (simple example)
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
