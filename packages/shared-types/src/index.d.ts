@@ -34,7 +34,7 @@ export type { TMemoryUnit } from './entities';
 export type { TChunk } from './entities';
 export type { TConcept } from './entities';
 export type { TApiResponse } from './api';
-export type { TAgentInput, TAgentOutput, TAgentContext, TDialogueAgentInputPayload, TDialogueAgentResult, Tool, TToolInput, TToolOutput, TNERToolInput, TNERToolOutput, TTextEmbeddingToolInput, TTextEmbeddingToolOutput, TVectorSearchToolInput, TVectorSearchToolOutput, TNERInputPayload, TNERResult, TExtractedEntity, TTextEmbeddingInputPayload, TTextEmbeddingResult, TVectorSearchInputPayload, TVectorSearchResultItem, TVectorSearchResult } from './ai';
+export type { TAgentInput, TAgentOutput, TAgentContext, TDialogueAgentInputPayload, TDialogueAgentResult, TDialogueAgentInput, TDialogueAgentOutput, TIngestionAnalystInput, TIngestionAnalystInputPayload, TIngestionAnalystResult, TIngestionContentItem, Tool, TToolInput, TToolOutput, TNERToolInput, TNERToolOutput, TTextEmbeddingToolInput, TTextEmbeddingToolOutput, TVectorSearchToolInput, TVectorSearchToolOutput, TNERInputPayload, TNERResult, TExtractedEntity, TTextEmbeddingInputPayload, TTextEmbeddingResult, TVectorSearchInputPayload, TVectorSearchResultItem, TVectorSearchResult, LLMChatInputPayload, LLMChatResult, LLMChatToolInput, LLMChatToolOutput, VisionCaptionInputPayload, VisionCaptionResult, VisionCaptionToolInput, VisionCaptionToolOutput, DocumentExtractInputPayload, DocumentExtractResult, DocumentExtractToolInput, DocumentExtractToolOutput } from './ai';
 export type { EmbeddingJob, IngestionJob, InsightJob } from './ai';
 export type { OrbData, OrbState, OrbActions, OrbStore } from './state';
 //# sourceMappingURL=index.d.ts.map

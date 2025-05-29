@@ -1,0 +1,25 @@
+{
+  "name": "@2dots1line/ingestion-analyst",
+  "version": "0.1.0",
+  "description": "Ingestion Analyst implementation for 2dots1line V4",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src --ext .ts",
+    "test": "jest",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@2dots1line/shared-types": "^0.1.0",
+    "@2dots1line/database": "^0.1.0",
+    "@2dots1line/ai-clients": "^0.1.0",
+    "@2dots1line/utils": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/node": "^18.0.0",
+    "rimraf": "^5.0.1",
+    "typescript": "^5.3.3"
+  }
+} 

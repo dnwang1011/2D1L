@@ -5,7 +5,7 @@
 
 import { Worker, Job } from 'bullmq';
 import { InsightJob } from '@2dots1line/shared-types';
-import * as insightEngine from '@2dots1line/insight-engine';
+import { InsightEngine } from '@2dots1line/cognitive-hub';
 
 // Worker configuration
 const QUEUE_NAME = 'insight';

@@ -14,7 +14,7 @@
   "dependencies": {
     "@2dots1line/shared-types": "^0.1.0",
     "@2dots1line/database": "^0.1.0",
-    "@2dots1line/insight-engine": "^0.1.0",
+    "@2dots1line/cognitive-hub": "^1.0.0",
     "@2dots1line/utils": "^0.1.0",
     "bullmq": "^4.14.0"
   },

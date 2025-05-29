@@ -7,7 +7,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.DatabaseService = exports.GrowthEventRepository = exports.ConceptRepository = exports.MemoryRepository = exports.UserRepository = exports.RedisClientWrapper = exports.TTL = exports.redisClient = exports.weaviateClient = exports.recordToObject = exports.neo4jDriver = exports.PrismaClientWrapper = exports.prismaHealthCheck = exports.disconnectPrisma = exports.prisma = exports.closeDatabases = exports.checkDatabasesHealth = exports.initializeDatabases = exports.loadDatabaseConfig = void 0;
+exports.DatabaseService = exports.CardRepository = exports.GrowthEventRepository = exports.ConceptRepository = exports.MemoryRepository = exports.UserRepository = exports.RedisClientWrapper = exports.TTL = exports.redisClient = exports.weaviateClient = exports.recordToObject = exports.neo4jDriver = exports.PrismaClientWrapper = exports.prismaHealthCheck = exports.disconnectPrisma = exports.prisma = exports.closeDatabases = exports.checkDatabasesHealth = exports.initializeDatabases = exports.loadDatabaseConfig = void 0;
 const client_1 = require("@prisma/client");
 const neo4j_driver_1 = __importDefault(require("neo4j-driver"));
 const weaviate_ts_client_1 = __importDefault(require("weaviate-ts-client"));
@@ -45,6 +45,8 @@ var concept_repository_1 = require("./repositories/concept.repository");
 Object.defineProperty(exports, "ConceptRepository", { enumerable: true, get: function () { return concept_repository_1.ConceptRepository; } });
 var growth_event_repository_1 = require("./repositories/growth-event.repository");
 Object.defineProperty(exports, "GrowthEventRepository", { enumerable: true, get: function () { return growth_event_repository_1.GrowthEventRepository; } });
+var card_repository_1 = require("./repositories/card.repository");
+Object.defineProperty(exports, "CardRepository", { enumerable: true, get: function () { return card_repository_1.CardRepository; } });
 // Ensure these environment variables are set in your .env file
 const DATABASE_URL = process.env.DATABASE_URL; // Used by Prisma internally
 const NEO4J_URI = process.env.NEO4J_URI || 'neo4j://localhost:7688';
@@ -56,6 +58,7 @@ const REDIS_URL = process.env.REDIS_URL; // E.g., redis://localhost:6379
 class DatabaseService {
     constructor() {
         console.log('Initializing DatabaseService...');
+        console.log('DATABASE_URL:', DATABASE_URL ? `${DATABASE_URL.substring(0, 20)}...` : 'NOT SET');
         this.prismaClient = new client_1.PrismaClient({
             datasources: {
                 db: {
@@ -158,6 +161,43 @@ class DatabaseService {
             console.log('Redis Client disconnected.');
         }
         console.log('DatabaseService disconnected.');
+    }
+    // Repository factory methods
+    getUserRepository() {
+        const { UserRepository } = require('./repositories/user.repository');
+        return new UserRepository(this);
+    }
+    getMemoryRepository() {
+        const { MemoryRepository } = require('./repositories/memory.repository');
+        return new MemoryRepository(this);
+    }
+    getConceptRepository() {
+        const { ConceptRepository } = require('./repositories/concept.repository');
+        return new ConceptRepository(this);
+    }
+    getGrowthEventRepository() {
+        const { GrowthEventRepository } = require('./repositories/growth-event.repository');
+        return new GrowthEventRepository(this);
+    }
+    getCardRepository() {
+        const { CardRepository } = require('./repositories/card.repository');
+        return new CardRepository(this);
+    }
+    // Direct client access methods
+    getPrismaClient() {
+        return this.prismaClient;
+    }
+    getNeo4j() {
+        return this.neo4jDriver;
+    }
+    getWeaviate() {
+        return this.weaviateClient;
+    }
+    getRedis() {
+        if (!this.redisClient || typeof this.redisClient.ping !== 'function') {
+            throw new Error('Redis client is not initialized or not functional. Check REDIS_URL.');
+        }
+        return this.redisClient;
     }
 }
 exports.DatabaseService = DatabaseService;

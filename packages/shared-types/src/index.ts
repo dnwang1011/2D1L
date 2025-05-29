@@ -56,6 +56,12 @@ export type {
     TAgentContext,
     TDialogueAgentInputPayload, 
     TDialogueAgentResult,
+    TDialogueAgentInput,
+    TDialogueAgentOutput,
+    TIngestionAnalystInput,
+    TIngestionAnalystInputPayload,
+    TIngestionAnalystResult,
+    TIngestionContentItem,
     Tool,
     TToolInput, 
     TToolOutput,
@@ -72,7 +78,19 @@ export type {
     TTextEmbeddingResult,
     TVectorSearchInputPayload,
     TVectorSearchResultItem,
-    TVectorSearchResult
+    TVectorSearchResult,
+    LLMChatInputPayload,
+    LLMChatResult,
+    LLMChatToolInput,
+    LLMChatToolOutput,
+    VisionCaptionInputPayload,
+    VisionCaptionResult,
+    VisionCaptionToolInput,
+    VisionCaptionToolOutput,
+    DocumentExtractInputPayload,
+    DocumentExtractResult,
+    DocumentExtractToolInput,
+    DocumentExtractToolOutput
 } from './ai';
 
 export type { 

@@ -211,7 +211,6 @@ export class UserController {
           user_id: true,
           name: true,
           email: true,
-          profile_picture_url: true,
           growth_profile: true,
           preferences: true,
           created_at: true,
@@ -232,7 +231,7 @@ export class UserController {
           username: user.name,
           email: user.email,
           displayName: user.name,
-          profilePictureUrl: user.profile_picture_url,
+          profilePictureUrl: null, // Field not available in V7 schema, return null for now
           growthProfile: user.growth_profile,
           preferences: user.preferences,
           createdAt: user.created_at,

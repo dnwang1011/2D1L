@@ -2,11 +2,13 @@
  * Repository exports for database package
  */
 
-export { UserRepository } from './user.repository';
-export { MemoryRepository } from './memory.repository';
-export { ConceptRepository } from './concept.repository';
-export { GrowthEventRepository } from './growth-event.repository';
-export { CardRepository, type CardData, type CardFilters } from './card.repository';
+export * from './user.repository';
+export * from './memory.repository';
+export * from './concept.repository';
+export * from './growth-event.repository';
+export * from './card.repository';
+export * from './conversation.repository';
+export * from './media.repository';
 
 // Re-export types for convenience
 export type {

@@ -1,4 +1,9 @@
-import { TUser, TMemoryUnit, TConcept } from '../entities'; // Use the correct type names
+// orb.types.ts - Type definitions for orb state management
+
+// This file will contain orb-related types once they are defined
+// TODO: Define orb state types
+
+export {}; // Empty export to make this a module
 
 // Basic Orb entity - this should eventually be moved to entities/
 export interface Orb {

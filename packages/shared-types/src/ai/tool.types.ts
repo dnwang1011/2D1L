@@ -211,4 +211,140 @@ export type TNERToolOutput = TToolOutput<TNERResult>;
 // Statistical Tools, Utility Tools, LLM Tools (summarize, critique)
 
 // Other specific tool inputs/outputs can be added here based on V4TechSpec.md section 4
-// For example: TVisionCaptionToolInput, TGraphQueryToolInput etc. 
+// For example: TVisionCaptionToolInput, TGraphQueryToolInput etc.
+
+// --- LLM Chat Tool Types ---
+
+/**
+ * Payload for LLM Chat tool input.
+ */
+export interface LLMChatInputPayload {
+  /** The main user message to send to the LLM */
+  userMessage: string;
+  /** Conversation history (excluding current message) */
+  history: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp?: string;
+  }>;
+  /** System prompt to guide the LLM's behavior */
+  systemPrompt: string;
+  /** User ID for context */
+  userId: string;
+  /** Session/conversation ID */
+  sessionId: string;
+  /** Optional memory context to include */
+  memoryContextBlock?: string;
+  /** Optional model configuration */
+  modelConfig?: {
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+  };
+}
+
+/**
+ * Result from LLM Chat tool.
+ */
+export interface LLMChatResult {
+  /** Generated response text */
+  text: string;
+  /** Token usage information */
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+  };
+  /** Model used for generation */
+  modelUsed?: string;
+  /** Additional metadata from the LLM */
+  metadata?: Record<string, any>;
+}
+
+export type LLMChatToolInput = TToolInput<LLMChatInputPayload>;
+export type LLMChatToolOutput = TToolOutput<LLMChatResult>;
+
+// --- Vision Caption Tool Types ---
+
+/**
+ * Payload for Vision Caption tool input.
+ */
+export interface VisionCaptionInputPayload {
+  /** URL of the image to analyze */
+  imageUrl: string;
+  /** MIME type of the image */
+  imageType: string;
+  /** Optional prompt to guide captioning */
+  prompt?: string;
+  /** Optional model to use for captioning */
+  modelId?: string;
+}
+
+/**
+ * Result from Vision Caption tool.
+ */
+export interface VisionCaptionResult {
+  /** Generated caption for the image */
+  caption: string;
+  /** Confidence score of the caption (0-1) */
+  confidence?: number;
+  /** Detected objects/entities in the image */
+  detectedObjects?: Array<{
+    name: string;
+    confidence: number;
+    boundingBox?: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    };
+  }>;
+  /** Additional metadata */
+  metadata?: Record<string, any>;
+}
+
+export type VisionCaptionToolInput = TToolInput<VisionCaptionInputPayload>;
+export type VisionCaptionToolOutput = TToolOutput<VisionCaptionResult>;
+
+// --- Document Extract Tool Types ---
+
+/**
+ * Payload for Document Extract tool input.
+ */
+export interface DocumentExtractInputPayload {
+  /** URL of the document to extract text from */
+  documentUrl: string;
+  /** MIME type of the document */
+  documentType: string;
+  /** Optional extraction options */
+  options?: {
+    includeMetadata?: boolean;
+    preserveFormatting?: boolean;
+    extractImages?: boolean;
+  };
+}
+
+/**
+ * Result from Document Extract tool.
+ */
+export interface DocumentExtractResult {
+  /** Extracted text content */
+  extractedText: string;
+  /** Document metadata */
+  metadata?: {
+    title?: string;
+    author?: string;
+    pageCount?: number;
+    language?: string;
+    createdDate?: string;
+    modifiedDate?: string;
+  };
+  /** Extracted images if requested */
+  extractedImages?: Array<{
+    url: string;
+    caption?: string;
+  }>;
+}
+
+export type DocumentExtractToolInput = TToolInput<DocumentExtractInputPayload>;
+export type DocumentExtractToolOutput = TToolOutput<DocumentExtractResult>; 

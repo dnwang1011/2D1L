@@ -6,6 +6,7 @@
     "apps/*",
     "packages/*",
     "services/*",
+    "workers/*",
     "3d-assets/*"
   ],
   "scripts": {

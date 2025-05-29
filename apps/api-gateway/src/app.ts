@@ -9,6 +9,7 @@ dotenv.config({ path: '../../.env' }); // Assuming .env is in monorepo root, or 
 import { authRoutes } from './routes/auth.routes';
 import { cardRoutes } from './routes/card.routes';
 import userRoutes from './routes/user.routes';
+import chatRoutes from './routes/chat.routes';
 
 const app: Express = express();
 
@@ -26,6 +27,7 @@ app.get('/api/health', (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/cards', cardRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Global Error Handler (simple example)
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

@@ -10,8 +10,5 @@ export type {
 } from './types';
 export { ToolExecutionError } from './types';
 
-// Re-export types from shared-types for convenience
-export type { Tool, TToolInput, TToolOutput } from '@2dots1line/shared-types';
-
 // Placeholder for future tool exports, e.g.:
 // export * from './tools/text-embedding.tool'; 

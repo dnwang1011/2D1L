@@ -9,7 +9,7 @@ export * from './services';
 // Export agents
 export * from './agents';
 
-// Export types from IngestionAnalyst
-export type { IngestionAnalystPayload, IngestionAnalystResult } from './agents/ingestion/IngestionAnalyst';
+// Note: Types like IngestionAnalystPayload and IngestionAnalystResult 
+// are now exported from @2dots1line/shared-types instead of locally
 
 // Service-level utilities and configurations can be added here 

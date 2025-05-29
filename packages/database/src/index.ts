@@ -53,6 +53,8 @@ export { MemoryRepository, type CreateMemoryUnitData, type CreateChunkData } fro
 export { ConceptRepository, type CreateConceptData, type CreateConceptRelationshipData } from './repositories/concept.repository';
 export { GrowthEventRepository, type CreateGrowthEventData } from './repositories/growth-event.repository';
 export { CardRepository, type CardData, type CardFilters } from './repositories/card.repository';
+export { ConversationRepository, type CreateConversationInput, type AddMessageInput } from './repositories/conversation.repository';
+export { MediaRepository, type CreateMediaInput, type UpdateMediaInput } from './repositories/media.repository';
 
 // Ensure these environment variables are set in your .env file
 const DATABASE_URL = process.env.DATABASE_URL; // Used by Prisma internally
@@ -214,6 +216,16 @@ export class DatabaseService {
   public getCardRepository() {
     const { CardRepository } = require('./repositories/card.repository');
     return new CardRepository(this);
+  }
+
+  public getConversationRepository() {
+    const { ConversationRepository } = require('./repositories/conversation.repository');
+    return new ConversationRepository(this.prismaClient);
+  }
+
+  public getMediaRepository() {
+    const { MediaRepository } = require('./repositories/media.repository');
+    return new MediaRepository(this.prismaClient);
   }
 
   // Direct client access methods

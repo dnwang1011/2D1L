@@ -5,7 +5,6 @@
 
 import * as cron from 'node-cron';
 import { Queue } from 'bullmq';
-import { InsightJob, EmbeddingJob } from '@2dots1line/shared-types';
 
 // Queue configuration
 const CONNECTION = {

@@ -1,6 +1,16 @@
-import { BaseAgent, TAgentInput, TAgentOutput, TAgentContext, ToolRegistry, DatabaseService } from '@2dots1line/agent-framework';
+import { BaseAgent, ToolRegistry, DatabaseService } from '@2dots1line/agent-framework';
 import { MemoryRepository, ConceptRepository, GrowthEventRepository } from '@2dots1line/database';
-import { TNERToolInput, TNERToolOutput, TExtractedEntity } from '@2dots1line/shared-types';
+import { 
+  TAgentInput, 
+  TAgentOutput, 
+  TAgentContext,
+  TIngestionAnalystInputPayload,
+  TIngestionAnalystResult,
+  TIngestionContentItem,
+  TNERToolInput, 
+  TNERToolOutput, 
+  TExtractedEntity
+} from '@2dots1line/shared-types';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -44,64 +54,9 @@ interface GrowthModelConfig {
   }>;
 }
 
-// Updated interfaces to match V7 specification
-export interface IngestionAnalystPayload {
-  batch_id: string;
-  content_items: Array<{
-    item_id: string;
-    text: string;
-    source_type: string;
-    timestamp: string;
-    media?: Array<{ type: string; url: string; }>;
-  }>;
-  processing_tier: 1 | 2 | 3;
-}
-
-export interface IngestionAnalystResult {
-  memory_units: Array<{
-    muid: string;
-    source_item_id: string;
-    title?: string | null;
-    status: string;
-    importance_score?: number | null;
-  }>;
-  chunks?: Array<{
-    cid: string;
-    muid: string;
-    text_preview: string;
-    sequence_order: number;
-    role?: string | null;
-  }>;
-  entities?: Array<{
-    concept_id: string;
-    name: string;
-    type: string;
-    confidence?: number | null;
-    description?: string | null;
-  }>;
-  relations?: Array<{
-    source_concept_id: string;
-    target_concept_id: string;
-    relationship_label: string;
-    weight?: number | null;
-    context_muid?: string | null;
-  }>;
-  queued_jobs?: Array<{
-    job_id: string;
-    queue_name: string;
-    content_type: 'chunk' | 'concept' | 'media_text' | 'media_visual';
-    content_id: string;
-  }>;
-  item_errors?: Array<{
-    item_id: string;
-    error_code: string;
-    message: string;
-  }>;
-}
-
 export class IngestionAnalyst extends BaseAgent<
-  TAgentInput<IngestionAnalystPayload>,
-  TAgentOutput<IngestionAnalystResult>
+  TAgentInput<TIngestionAnalystInputPayload>,
+  TAgentOutput<TIngestionAnalystResult>
 > {
   private memoryRepository: MemoryRepository;
   private conceptRepository: ConceptRepository;
@@ -129,6 +84,20 @@ export class IngestionAnalyst extends BaseAgent<
 
     // Load configurations from external files
     this.loadConfigurations();
+  }
+
+  /**
+   * Helper method to extract text content from TIngestionContentItem
+   */
+  private getTextContent(item: TIngestionContentItem): string {
+    return item.text_content || '';
+  }
+
+  /**
+   * Helper method to extract timestamp from TIngestionContentItem  
+   */
+  private getTimestamp(item: TIngestionContentItem): string {
+    return item.creation_timestamp;
   }
 
   private loadConfigurations(): void {
@@ -265,15 +234,15 @@ export class IngestionAnalyst extends BaseAgent<
   }
 
   async process(
-    input: TAgentInput<IngestionAnalystPayload>,
+    input: TAgentInput<TIngestionAnalystInputPayload>,
     context?: TAgentContext
-  ): Promise<TAgentOutput<IngestionAnalystResult>> {
+  ): Promise<TAgentOutput<TIngestionAnalystResult>> {
     const startTime = performance.now();
     const { batch_id, content_items, processing_tier } = input.payload;
     
     this.log(`Processing batch ${batch_id} with ${content_items.length} items (Tier ${processing_tier})`);
 
-    const result: IngestionAnalystResult = {
+    const result: TIngestionAnalystResult = {
       memory_units: [],
       chunks: [],
       entities: [],
@@ -304,8 +273,6 @@ export class IngestionAnalyst extends BaseAgent<
       result,
       metadata: {
         processing_time_ms: Math.round(processingTime),
-        agent_used: 'IngestionAnalyst',
-        processing_tier,
         processed_in_region: input.region,
         batch_stats: {
           total_items: content_items.length,
@@ -319,10 +286,12 @@ export class IngestionAnalyst extends BaseAgent<
   }
 
   private async processContentItem(
-    item: { item_id: string; text: string; source_type: string; timestamp: string },
+    item: TIngestionContentItem,
     userId: string,
-    result: IngestionAnalystResult
+    result: TIngestionAnalystResult
   ): Promise<void> {
+    const textContent = this.getTextContent(item);
+    
     // Step 1: Create MemoryUnit
     const memoryUnit = await this.createMemoryUnit(item, userId);
     result.memory_units.push({
@@ -330,11 +299,11 @@ export class IngestionAnalyst extends BaseAgent<
       source_item_id: item.item_id,
       title: memoryUnit.title,
       status: 'processed',
-      importance_score: this.calculateImportanceScore(item.text)
+      importance_score: this.calculateImportanceScore(textContent)
     });
 
     // Step 2: Create Chunks with enhanced metadata
-    const chunks = await this.createChunks(item.text, memoryUnit.muid, userId);
+    const chunks = await this.createChunks(textContent, memoryUnit.muid, userId);
     result.chunks!.push(...chunks.map(chunk => ({
       cid: chunk.cid,
       muid: chunk.muid,
@@ -344,7 +313,7 @@ export class IngestionAnalyst extends BaseAgent<
     })));
 
     // Step 3: Two-Phase Entity Processing (Directive 1)
-    const extractedEntities = await this.extractEntitiesWithStrategicFiltering(item.text, userId);
+    const extractedEntities = await this.extractEntitiesWithStrategicFiltering(textContent, userId);
     
     // Step 4: Create Concepts for Strategic Entities
     const conceptEntities = await this.createStrategicConcepts(extractedEntities.strategic, userId, memoryUnit.muid);
@@ -359,7 +328,7 @@ export class IngestionAnalyst extends BaseAgent<
     await this.generateGrowthEvents(conceptEntities, userId, memoryUnit.muid, item.source_type);
 
     // Step 7: Generate Growth Event for MemoryUnit using detectGrowthDimensions (FIXED)
-    const memoryUnitDimensions = this.detectGrowthDimensions(item.text, item.source_type);
+    const memoryUnitDimensions = this.detectGrowthDimensions(textContent, item.source_type);
     for (const dimension of memoryUnitDimensions) {
       await this.growthEventRepository.createGrowthEvent({
         user_id: userId,
@@ -373,22 +342,23 @@ export class IngestionAnalyst extends BaseAgent<
   }
 
   private async createMemoryUnit(
-    item: { item_id: string; text: string; source_type: string; timestamp: string },
+    item: TIngestionContentItem,
     userId: string
   ) {
-    const title = this.extractTitle(item.text);
+    const textContent = this.getTextContent(item);
+    const title = this.extractTitle(textContent);
     
     return await this.memoryRepository.createMemoryUnit({
       user_id: userId,
       source_type: item.source_type,
       title,
-      content: item.text, // V7: Stored directly in memory_units.content field
+      content: textContent, // V7: Stored directly in memory_units.content field
       tier: 1,
-      importance_score: this.calculateImportanceScore(item.text),
+      importance_score: this.calculateImportanceScore(textContent),
       metadata: {
         source_item_id: item.item_id,
         processing_agent: 'IngestionAnalyst',
-        creation_ts: item.timestamp,
+        creation_ts: this.getTimestamp(item),
         content_source: 'processed', // V7: Directive 5 - mark as processed content
         content_processing_notes: {
           processing_agent: 'IngestionAnalyst',
@@ -948,4 +918,4 @@ export class IngestionAnalyst extends BaseAgent<
     
     return Math.min(score, 1.0);
   }
-}
+} 

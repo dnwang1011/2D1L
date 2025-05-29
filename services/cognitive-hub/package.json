@@ -17,23 +17,28 @@
     "@2dots1line/database": "*",
     "@2dots1line/shared-types": "*",
     "@2dots1line/tool-registry": "*",
+    "@google/generative-ai": "^0.2.1",
     "dotenv": "^16.4.5",
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.0",
     "@types/jest": "^29.5.0",
+    "@types/uuid": "^9.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
     "eslint": "^8.0.0",
     "jest": "^29.5.0",
     "ts-jest": "^29.1.0",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0"
+    "typescript": "^5.0.0"
   },
-  "keywords": ["ai", "agents", "cognitive", "nlp", "knowledge-graph"],
+  "keywords": [
+    "ai",
+    "agents",
+    "cognitive",
+    "nlp",
+    "knowledge-graph"
+  ],
   "author": "2dots1line Team",
   "license": "MIT"
 }
-
- 

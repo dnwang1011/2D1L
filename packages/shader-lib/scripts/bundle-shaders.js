@@ -23,16 +23,21 @@ async function bundleShaders() {
     const fragmentShaderMatch = content.match(/\/\/\s*Fragment Shader\s*([^\s\S]*)/i);
 
     let jsContent = '';
+    let dtsContent = '';
     if (vertexShaderMatch && fragmentShaderMatch) {
       jsContent = `export const ${shaderName} = {\n  vertexShader: \`\n${vertexShaderMatch[1].trim()}\n\`,\n  fragmentShader: \`\n${fragmentShaderMatch[1].trim()}\n\`,\n};\nexport default ${shaderName};\n`;
+      dtsContent = `export declare const ${shaderName}: {\n  vertexShader: string;\n  fragmentShader: string;\n};\nexport default ${shaderName};\n`;
     } else {
       // Assume entire file is one type or handle other formats
       jsContent = `const shaderContent = \`\n${content.trim()}\n\`;\nexport default shaderContent;\n`;
+      dtsContent = `declare const shaderContent: string;\nexport default shaderContent;\n`;
     }
 
     const outFile = path.join(outDir, `${shaderName}.glsl.js`);
+    const dtsFile = path.join(outDir, `${shaderName}.glsl.d.ts`);
     await fs.writeFile(outFile, jsContent);
-    console.log(`Bundled ${file} to ${outFile}`);
+    await fs.writeFile(dtsFile, dtsContent);
+    console.log(`Bundled ${file} to ${outFile} and ${dtsFile}`);
     exportsContent += `export { default as ${shaderName} } from './generated/${shaderName}.glsl.js';\n`;
   }
 

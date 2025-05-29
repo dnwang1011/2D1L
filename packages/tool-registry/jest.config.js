@@ -1,35 +1,25 @@
-const { pathsToModuleNameMapper } = require('ts-jest');
-const { compilerOptions } = require('../../tsconfig.base.json');
-
-/** @type {import('ts-jest').JestConfigWithTsJest} */
+/** @type {import('jest').Config} */
 module.exports = {
-  preset: 'ts-jest',
+  displayName: 'tool-registry',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src'],
-  moduleDirectories: ['node_modules', '<rootDir>/../../node_modules'],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  testMatch: [
-    '**/__tests__/**/*.+(ts|tsx|js)',
-    '**/?(*.)+(spec|test).+(ts|tsx|js)',
-  ],
+  clearMocks: true,
   transform: {
-    '^.+\.(ts|tsx)?$': [
+    '^.+\\.tsx?$': [
       'ts-jest',
       {
-        tsconfig: 'tsconfig.json',
-        isolatedModules: true
+        tsconfig: '<rootDir>/tsconfig.json',
+        isolatedModules: true,
       },
     ],
   },
-  collectCoverage: true,
-  coverageDirectory: 'coverage',
-  coverageReporters: ['text', 'lcov'],
   moduleNameMapper: {
-    // Use pathsToModuleNameMapper to correctly map TypeScript paths
-    ...pathsToModuleNameMapper(compilerOptions.paths || {}, { prefix: '<rootDir>/../../' }),
-    '^@2dots1line/shared-types/ai$': '<rootDir>/../shared-types/src/ai/index.ts',
-    '^@2dots1line/shared-types$': '<rootDir>/../shared-types/src/index.ts',
-    // Add mappings for other packages like database, ai-clients as needed
-    // Example: '^@2dots1line/database/(.*)$': '<rootDir>/../database/src/$1',
+    '^@2dots1line/shared-types$': '<rootDir>/../shared-types/src',
   },
+  testMatch: [
+    '<rootDir>/src/**/__tests__/**/*.test.ts',
+    '<rootDir>/src/**/*.test.ts',
+  ],
+  collectCoverage: false,
+  collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
+  coverageDirectory: 'coverage',
 }; 

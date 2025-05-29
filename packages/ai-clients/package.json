@@ -12,6 +12,7 @@
     "dev": "tsc -w"
   },
   "dependencies": {
+    "@2dots1line/shared-types": "file:../shared-types",
     "@google/generative-ai": "^0.2.1",
     "uuid": "^9.0.1",
     "axios": "^1.6.2",

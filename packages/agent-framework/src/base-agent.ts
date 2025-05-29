@@ -1,6 +1,6 @@
-import { ToolRegistry, Tool } from '@2dots1line/tool-registry'; // Adjust path if needed
-import { DatabaseService } from '@2dots1line/database'; // Adjust path if needed
-import { TAgentInput, TAgentOutput, TAgentContext, TToolInput, TToolOutput } from '@2dots1line/shared-types'; // Adjust path for shared types
+import { ToolRegistry } from '@2dots1line/tool-registry';
+import { DatabaseService } from '@2dots1line/database';
+import { TAgentInput, TAgentOutput, TAgentContext, TToolInput, TToolOutput, Tool } from '@2dots1line/shared-types';
 
 export abstract class BaseAgent<TInput extends TAgentInput = TAgentInput, TOutput extends TAgentOutput = TAgentOutput> {
   public readonly name: string;

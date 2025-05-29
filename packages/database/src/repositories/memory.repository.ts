@@ -33,12 +33,12 @@ export class MemoryRepository {
    */
   async createMemoryUnit(data: CreateMemoryUnitData) {
     try {
+      // Create the memory unit without content field
       const memoryUnit = await this.prisma.memory_units.create({
         data: {
           user_id: data.user_id,
           source_type: data.source_type,
           title: data.title,
-          content: data.content, // V7: Store content directly in memory_units
           creation_ts: new Date(),
           processing_status: 'raw',
           tier: data.tier || 1,
@@ -47,6 +47,19 @@ export class MemoryRepository {
           metadata: data.metadata,
         },
       });
+
+      // If content is provided, create a raw_content entry
+      if (data.content) {
+        await this.prisma.raw_content.create({
+          data: {
+            muid: memoryUnit.muid,
+            user_id: data.user_id,
+            content_type: 'text', // Default to text, could be parameterized if needed
+            content: data.content,
+            creation_ts: new Date(),
+          },
+        });
+      }
 
       return memoryUnit;
     } catch (error: any) {
