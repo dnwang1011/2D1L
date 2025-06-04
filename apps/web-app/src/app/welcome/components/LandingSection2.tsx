@@ -1,9 +1,11 @@
 // apps/web-app/src/app/welcome/components/LandingSection2.tsx
 'use client';
 
-import React, { useEffect, useRef, useMemo } from 'react';
 import { gsap } from 'gsap';
+import React, { useEffect, useRef, useMemo } from 'react';
+
 // import { ScrollTrigger } from 'gsap/ScrollTrigger'; // Commented out
+// import OrbScene from '../../../components/canvas/OrbScene'; // Removed as it does not exist and is not used
 import { useOrbStore } from '../../../stores/OrbStore';
 
 // gsap.registerPlugin(ScrollTrigger); // Commented out

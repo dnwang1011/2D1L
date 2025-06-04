@@ -1,8 +1,9 @@
 // apps/web-app/src/app/welcome/components/LandingSection3.tsx
 'use client';
 
-import React, { useEffect, useRef, useMemo } from 'react';
 import { gsap } from 'gsap';
+import React, { useEffect, useRef, useMemo } from 'react';
+
 // import { ScrollTrigger } from 'gsap/ScrollTrigger'; // Commented out
 import { useOrbStore } from '../../../stores/OrbStore';
 
@@ -13,7 +14,7 @@ import OrbChatBubble from './OrbChatBubble'; // Assuming this relative path is c
 export default function LandingSection3() {
   const sectionRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const { setVisible: setOrbVisible, setPosition: setOrbPosition, setVisualState: setOrbVisualState } = useOrbStore();
+  const { /* setVisible: setOrbVisible, */ setPosition: setOrbPosition, setVisualState: setOrbVisualState } = useOrbStore();
 
   const targetOrbPosition = useMemo<[number, number, number]>(() => [0, -2, 0], []);
 
@@ -61,7 +62,7 @@ export default function LandingSection3() {
     return () => {
       tl.kill();
     };
-  }, [setOrbVisualState, setOrbPosition, targetOrbPosition]);
+  }, [/*setOrbVisible,*/ setOrbPosition, setOrbVisualState, targetOrbPosition]);
 
   return (
     <section

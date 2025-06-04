@@ -1,8 +1,9 @@
 // apps/web-app/src/app/welcome/components/LandingSection4.tsx
 'use client';
 
-import React, { useEffect, useRef, useMemo } from 'react';
 import { gsap } from 'gsap';
+import React, { useEffect, useRef, useMemo } from 'react';
+
 // import { ScrollTrigger } from 'gsap/ScrollTrigger'; // Removed
 import { useOrbStore } from '../../../stores/OrbStore';
 

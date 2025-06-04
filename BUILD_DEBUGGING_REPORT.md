@@ -214,3 +214,89 @@ After numerous attempts and layered fixes, a stable and successful monorepo buil
 *   All relevant packages (`packages/*`, `services/*`, `workers/*`) consistently generate their `dist` output directories, including `packages/text-tool` which was previously missing its `dist` folder.
 
 This successful resolution highlights the importance of ensuring a clean package manager state (especially with pnpm's complex store and linking mechanisms) and correctly configuring the execution environment for build tools like Turbo.
+
+**Post-Resolution Build Consistency Check (`packages/text-tool`):**
+
+*   **Symptom:** After a successful full monorepo build, it was observed that `packages/text-tool` had not generated its `dist` directory.
+*   **Cause:**
+    1.  The `build` script in `packages/text-tool/package.json` was `tsc` instead of `tsc -b tsconfig.json --verbose --force`, which is required for composite projects.
+    2.  When attempting to build `text-tool` with `tsc -b`, it failed because its `tsconfig.json` was implicitly referencing `packages/tool-registry/tsconfig.json` (which includes test files) instead of `packages/tool-registry/tsconfig.build.json` (which excludes them). This caused `tsc -b` for `text-tool` to try and compile `tool-registry`'s test files, leading to errors.
+*   **Solution:**
+    1.  Updated `packages/text-tool/package.json` build script to: `"build": "tsc -b tsconfig.json --verbose --force"`.
+    2.  Updated `packages/text-tool/tsconfig.json` to explicitly reference: `{ "path": "../tool-registry/tsconfig.build.json" }`.
+*   **Outcome:** `packages/text-tool` now builds correctly in isolation and generates its `dist` directory. This reinforces the established pattern for configuring composite TypeScript projects within the monorepo.
+*   **Lesson:** Even with a successful overall monorepo build, it's prudent to spot-check individual packages, especially those that might be leaf nodes in the build graph or not critical blocking dependencies, to ensure they are correctly producing their outputs as defined by their `package.json` (`main`, `types` fields) and `tsconfig.json` (`outDir`).
+
+## 9. Modular Development Plan & Workflow Recommendations (Moving Forward)
+
+To continue development while maintaining the hard-won stability of the build environment, the following plan and workflow are recommended:
+
+**A. Development Goals (Iterative Steps):**
+
+1.  **Finish Welcome Landing Page Scroll Motions (`apps/web-app`):**
+    *   Focus on enhancing `LandingSection` components with GSAP for scroll-triggered animations.
+    *   Work section by section, testing animations in the browser.
+    *   Primary packages involved: `apps/web-app`.
+
+2.  **Activate Sign Up & Log In Functionality:**
+    *   **Frontend (`apps/web-app`):**
+        *   Develop/refine `SignUpModal` and `LoginModal` UI components.
+        *   Integrate with `ModalStore` for visibility control.
+        *   Implement API client functions (e.g., using TanStack Query or simple fetch wrappers) to call backend authentication endpoints.
+        *   Handle form validation, user feedback (loading states, errors, success messages).
+    *   **Backend (`apps/api-gateway`, `services/cognitive-hub`, `packages/database`):**
+        *   Define RESTful API endpoints in `apps/api-gateway` (e.g., `/api/v1/auth/signup`, `/api/v1/auth/login`).
+        *   Implement controllers in `api-gateway` for request handling, input validation (e.g., using Zod).
+        *   Develop services within `services/cognitive-hub` for core authentication logic:
+            *   User creation (hashing passwords securely, e.g., with bcrypt).
+            *   User lookup and password verification.
+            *   (Future) Session management (e.g., JWTs).
+        *   Utilize repository patterns in `packages/database` (Prisma) for interacting with the User table.
+    *   Primary packages involved: `apps/web-app`, `apps/api-gateway`, `services/cognitive-hub`, `packages/database`, `packages/shared-types` (for API request/response types).
+
+3.  **Test End-to-End User Authentication Flow & Basic Data Pipeline:**
+    *   Manually test the sign-up process via the UI.
+    *   Verify user creation in the PostgreSQL database.
+    *   Manually test the log-in process via the UI with valid and invalid credentials.
+    *   (If applicable) Verify session establishment/token generation.
+    *   API-level testing for auth endpoints (e.g., using Postman or scripts) to ensure robustness.
+    *   Write unit and integration tests for new backend authentication logic (services, controllers, repositories).
+
+**B. Recommended Workflow for Stability & Efficiency:**
+
+1.  **Branching Strategy:**
+    *   Always work on new features or significant bug fixes in separate **feature branches** (e.g., `feat/welcome-scroll-motions`, `fix/auth-login-validation`).
+    *   Create feature branches from the latest `main` (or a designated `develop` branch if adopted).
+    *   Keep `main` branch clean and always buildable.
+
+2.  **Development Environment:**
+    *   A **single Cursor window** for the project is generally recommended to avoid desynchronization.
+    *   Within that window, you can use **multiple chat tabs** to manage different contexts if working on frontend and backend simultaneously for a feature (e.g., one chat for `web-app` changes, another for `api-gateway` changes relating to the same feature branch).
+    *   Avoid opening multiple Cursor windows on the *same codebase and branch* unless you have a very clear mental model of which window is for what, to prevent accidental conflicting edits.
+
+3.  **Build & Test Discipline (The "Inner Loop"):**
+    *   **Before Starting Work:** Ensure your current branch is up-to-date with `main` (`git pull --rebase origin main`). Run a full `pnpm build` to confirm a clean baseline.
+    *   **Incremental Changes:** Make small, focused changes within a package.
+    *   **Local Package Build:** After changes in a package, run its local build: `pnpm --filter <package-name> build`. Address any errors immediately.
+    *   **Lint & Format:** Regularly run `pnpm lint` and `pnpm format` (or integrate with save actions in Cursor) for the files you're editing.
+    *   **Local Full Build:** Periodically, and always before committing non-trivial changes, run a full `pnpm build` from the monorepo root to catch cross-package integration issues.
+    *   **Testing:**
+        *   Write unit tests for new functions/logic (especially backend).
+        *   Write integration tests for interactions between services/modules.
+        *   Manually test UI changes in the browser.
+    *   **Commit Small, Atomic Units:** Once a logical piece of work is complete, builds successfully, and passes tests, commit it with a clear, descriptive message referencing the task or issue if applicable (e.g., `feat(auth): implement user signup endpoint and service logic (WIP)`).
+        *   A good commit is one that you can easily revert if it causes problems.
+
+4.  **Integrating Changes (The "Outer Loop"):**
+    *   **Update Feature Branch:** Before considering a feature complete or creating a Pull Request, pull the latest changes from `main` into your feature branch using rebase: `git pull --rebase origin main`. Resolve any merge conflicts locally. Run `pnpm build` and any relevant tests again.
+    *   **Pull Requests (PRs):** Use PRs to merge feature branches into `main`.
+        *   Ensure the PR description is clear about what was done and why.
+        *   If CI is set up, it should run builds and tests on the PR.
+    *   **Code Review:** Even for solo developers, reviewing your own PR after a short break can help catch mistakes. If working in a team, this is where peer review happens.
+
+5.  **Using Cursor Agent Effectively:**
+    *   Continue to provide clear, specific prompts, especially regarding file paths and the context of changes (e.g., "This is for a composite library package, ensure `tsc -b` and `paths: {}`").
+    *   Request changes incrementally and verify with builds.
+    *   If an agent-suggested change seems complex or risky, ask for an explanation or break it down further.
+
+By adhering to this structured approach, focusing on small, verifiable steps, and leveraging Git for isolation and history, you can significantly enhance development velocity and minimize time lost to complex build and integration problems. The "Best Practices for Maintaining a Stable Build Environment" detailed in Section 8 of this report remain paramount.

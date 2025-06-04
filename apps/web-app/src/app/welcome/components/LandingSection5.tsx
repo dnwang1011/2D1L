@@ -1,8 +1,8 @@
 // apps/web-app/src/app/welcome/components/LandingSection5.tsx
 'use client';
 
-import React, { useEffect, useRef, useMemo } from 'react';
 import { gsap } from 'gsap';
+import React, { useEffect, useRef, useMemo } from 'react';
 
 import { useOrbStore } from '../../../stores/OrbStore';
 
@@ -15,9 +15,9 @@ export default function LandingSection5() {
   const chatBubble2Ref = useRef<HTMLDivElement>(null);
   const card1Ref = useRef<HTMLDivElement>(null);
   const card2Ref = useRef<HTMLDivElement>(null);
-  const { setVisible: setOrbVisible, setPosition: setOrbPosition, setVisualState: setOrbVisualState } = useOrbStore();
+  const { /* setVisible: setOrbVisible, */ setPosition: setOrbPosition, setVisualState: setOrbVisualState } = useOrbStore();
 
-  const targetOrbPosition = useMemo<[number, number, number]>(() => [0, 1.5, 0], []); // Example, adjust as needed
+  const targetOrbPosition = useMemo<[number, number, number]>(() => [2.5, -1.5, 0], []); // Example: bottom-right
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -27,6 +27,7 @@ export default function LandingSection5() {
     const card2 = card2Ref.current;
 
     if (!section || !bubble1 || !bubble2 || !card1 || !card2) return;
+    
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         scrollTrigger: {
@@ -58,10 +59,11 @@ export default function LandingSection5() {
           { opacity: 1, y: 0, scale: 1, duration: 1, ease: 'power3.out', stagger: 0.3 },
           "-=0.5" // Start cards animation as second bubble is finishing
         );
+    }, section); // Scope to the section
 
-    }, section);
-    return () => ctx.revert();
-  }, [setOrbVisualState, setOrbPosition, targetOrbPosition]);
+    return () => ctx.revert(); // Cleanup GSAP context and all animations within it
+
+  }, [/* setOrbVisible, */ setOrbPosition, setOrbVisualState, targetOrbPosition]);
 
   return (
     <section
