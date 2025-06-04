@@ -1,18 +1,19 @@
 import React from 'react';
 
-interface AscensionSceneProps {
-  // Define props for AscensionScene here
-  // e.g., transitionState, speed
-}
+// Define Props as an empty object if no props are expected, or be more specific
+// type Props = Record<string, never>; // Or simply remove if not using props
 
-const AscensionScene: React.FC<AscensionSceneProps> = (props) => {
-  // Basic R3F elements for the AscensionScene
-  // Replace with actual AscensionScene implementation later
+// AscensionScene component
+const AscensionScene: React.FC = () => { // Removed props drilling and type Props
+  // Scene logic here
   return (
-    <mesh>
-      <sphereGeometry args={[1, 32, 32]} />
-      <meshStandardMaterial color="lightgoldenrodyellow" />
-    </mesh>
+    <>
+      {/* Example content: replace with actual scene elements */}
+      <mesh>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial color="orange" />
+      </mesh>
+    </>
   );
 };
 

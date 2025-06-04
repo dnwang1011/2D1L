@@ -12,13 +12,13 @@ interface Card {
 interface CardGalleryState {
   cards: Card[];
   isLoading: boolean;
-  filters: Record<string, any>; // Define filter types later
+  filters: Record<string, unknown>;
   // Add other card gallery related state properties here
   setCards: (cards: Card[]) => void;
   addCard: (card: Card) => void;
   updateCard: (cardId: string, updates: Partial<Card>) => void;
   setLoading: (loading: boolean) => void;
-  setFilters: (filters: Record<string, any>) => void;
+  setFilters: (filters: Record<string, unknown>) => void;
 }
 
 export const useCardGalleryStore = create<CardGalleryState>((set) => ({

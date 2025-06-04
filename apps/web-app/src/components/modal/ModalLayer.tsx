@@ -1,11 +1,12 @@
 'use client';
 
 import { useModalStore } from '../../stores/ModalStore';
-import Dashboard from './Dashboard';
-import CardGallery from './CardGallery';
-import ChatInterface from './ChatInterface';
 import LoginModal from '../auth/LoginModal';
 import SignUpModal from '../auth/SignUpModal';
+
+import CardGallery from './CardGallery';
+import ChatInterface from './ChatInterface';
+import Dashboard from './Dashboard';
 
 export default function ModalLayer({ children }: { children: React.ReactNode }) {
   const { activeModal, isVisible } = useModalStore();

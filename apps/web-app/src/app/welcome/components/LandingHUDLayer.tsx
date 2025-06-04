@@ -1,9 +1,10 @@
 // apps/web-app/src/app/welcome/components/LandingHUDLayer.tsx
 'use client';
 
+import { useRouter } from 'next/navigation';
+
 import { useModalStore } from '../../../stores/ModalStore';
 import { useUserStore } from '../../../stores/UserStore';
-import { useRouter } from 'next/navigation';
 
 export default function LandingHUDLayer() {
   const { setActiveModal } = useModalStore();

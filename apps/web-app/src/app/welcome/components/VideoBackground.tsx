@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { useEffect, useRef } from 'react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -21,25 +21,15 @@ export default function VideoBackground() {
   const graphVideoRef = useRef<HTMLVideoElement>(null);
   const artifactDemoVideoRef = useRef<HTMLVideoElement>(null);
 
-  const videoRefs = {
-    cloud: cloudVideoRef,
-    ascension: ascensionVideoRef,
-    interstellar: interstellarVideoRef,
-    graph: graphVideoRef,
-    artifact_demo: artifactDemoVideoRef,
-  };
-
-  const ensureVideoPlayed = async (videoEl: HTMLVideoElement | null) => {
-    if (videoEl && videoEl.paused) {
-      try {
-        await videoEl.play();
-      } catch (error) {
-        console.warn(`Video play interrupted or failed for ${videoEl.dataset.video}:`, error);
-      }
-    }
-  };
-
   useEffect(() => {
+    const videoRefs = {
+      cloud: cloudVideoRef,
+      ascension: ascensionVideoRef,
+      interstellar: interstellarVideoRef,
+      graph: graphVideoRef,
+      artifact_demo: artifactDemoVideoRef,
+    };
+
     const videos = [
       cloudVideoRef.current,
       ascensionVideoRef.current,
@@ -120,7 +110,7 @@ export default function VideoBackground() {
       onEnter: () => switchVideo('ascension'),
       onEnterBack: () => switchVideo('ascension'),
       scrub: 0.5,
-      onUpdate: (self: any) => {
+      onUpdate: (self: ScrollTrigger) => {
         if (ascensionVideoRef.current && ascensionVideoRef.current.duration && currentActiveVideo === 'ascension') {
           const progress = self.progress;
           ascensionVideoRef.current.currentTime = Math.min(progress * ascensionVideoRef.current.duration, ascensionVideoRef.current.duration - 0.01);
@@ -135,7 +125,7 @@ export default function VideoBackground() {
       onEnter: () => switchVideo('interstellar'),
       onEnterBack: () => switchVideo('interstellar'),
       scrub: 1,
-      onUpdate: (self: any) => {
+      onUpdate: (self: ScrollTrigger) => {
         if (interstellarVideoRef.current && currentActiveVideo === 'interstellar') {
             ensureVideoPlayed(interstellarVideoRef.current);
             const velocity = Math.abs(self.getVelocity() / 500);
@@ -171,9 +161,19 @@ export default function VideoBackground() {
     });
 
     return () => {
-      ScrollTrigger.getAll().forEach((trigger: any) => trigger.kill());
+      ScrollTrigger.getAll().forEach((trigger: ScrollTrigger) => trigger.kill());
     };
   }, []);
+
+  const ensureVideoPlayed = async (videoEl: HTMLVideoElement | null) => {
+    if (videoEl && videoEl.paused) {
+      try {
+        await videoEl.play();
+      } catch (error) {
+        console.warn(`Video play interrupted or failed for ${videoEl.dataset.video}:`, error);
+      }
+    }
+  };
 
   return (
     <div className="fixed inset-0 -z-10 pointer-events-none">

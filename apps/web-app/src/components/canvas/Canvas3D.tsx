@@ -1,12 +1,13 @@
 'use client';
 
-import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
+import { Canvas } from '@react-three/fiber';
 import { Suspense } from 'react';
 
 import { useSceneStore } from '../../stores/SceneStore';
-import CloudScene from './CloudScene';
+
 import AscensionScene from './AscensionScene';
+import CloudScene from './CloudScene';
 import GraphScene from './GraphScene';
 
 // Basic shared lighting and environment

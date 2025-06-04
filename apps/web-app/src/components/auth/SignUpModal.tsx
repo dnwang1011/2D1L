@@ -2,25 +2,28 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
+
 import { useModalStore } from '../../stores/ModalStore';
 // import { useUserStore } from '../../stores/UserStore'; // Uncomment when UserStore is fully integrated
 // import { apiClient } from '../../lib/apiClient'; // Uncomment for API calls
 
 // Mock/Placeholder UserStore if not fully implemented
-const useUserStore = () => ({
-  login: (token: string, userData: any) => console.log('Mock UserStore: Login called after signup', token, userData),
-});
+// const useUserStore = () => ({
+//   login: (token: string, userData: any) => console.log('Mock UserStore: Login called after signup', token, userData),
+// });
 
 
 export default function SignUpModal() {
   const { closeModal, setActiveModal } = useModalStore();
-  const { login } = useUserStore(); // Get login action from store
+  // const { login } = useUserStore(); // Commented out as unused
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  // const [login, { loading, error, data: loginData }] = useMutation(LOGIN_MUTATION); // Commented out
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

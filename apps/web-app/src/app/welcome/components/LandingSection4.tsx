@@ -1,12 +1,14 @@
 // apps/web-app/src/app/welcome/components/LandingSection4.tsx
 'use client';
 
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import OrbChatBubble from './OrbChatBubble';
+// import { ScrollTrigger } from 'gsap/ScrollTrigger'; // Removed
 import { useOrbStore } from '../../../stores/OrbStore';
-// ScrollTrigger registered globally
+
+import OrbChatBubble from './OrbChatBubble';
+
+// gsap.registerPlugin(ScrollTrigger); // Removed
 
 export default function LandingSection4() {
   const sectionRef = useRef<HTMLDivElement>(null); // Main section for interstellar
@@ -14,8 +16,8 @@ export default function LandingSection4() {
 
   const chatBubble1Ref = useRef<HTMLDivElement>(null);
   const chatBubble2Ref = useRef<HTMLDivElement>(null);
-  const { setVisualState: setOrbVisualState, setPosition: setOrbPosition } = useOrbStore();
-  const targetOrbPosition: [number, number, number] = [-2.5, -1.5, 0]; // Maintain Orb position
+  const { setPosition: setOrbPosition, setVisualState: setOrbVisualState } = useOrbStore();
+  const targetOrbPosition = useMemo<[number, number, number]>(() => [2.5, -1.5, 0], []); // Example position, adjust as needed
 
   useEffect(() => {
     const section = sectionRef.current;

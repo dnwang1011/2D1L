@@ -1,8 +1,11 @@
 'use client';
 
 import { useModalStore } from '../../stores/ModalStore';
-import { useSceneStore } from '../../stores/SceneStore';
+import { useSceneStore, type SceneState } from '../../stores/SceneStore';
 import { useUserStore } from '../../stores/UserStore';
+
+// Define a specific type for scene names, excluding null
+type SceneName = Exclude<SceneState['activeScene'], null>;
 
 export default function HUDLayer() {
   const { setActiveModal, activeModal } = useModalStore();
@@ -10,10 +13,10 @@ export default function HUDLayer() {
   const { isAuthenticated, logout, user } = useUserStore();
 
   const handleSceneToggle = () => {
-    const scenes = ['CloudScene', 'AscensionScene', 'GraphScene'];
-    const currentIndex = scenes.indexOf(activeScene || '');
+    const scenes: SceneName[] = ['CloudScene', 'AscensionScene', 'GraphScene'];
+    const currentIndex = scenes.indexOf(activeScene || 'CloudScene');
     const nextIndex = (currentIndex + 1) % scenes.length;
-    setActiveScene(scenes[nextIndex] as any);
+    setActiveScene(scenes[nextIndex]);
   };
 
   return (

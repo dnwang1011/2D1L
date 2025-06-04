@@ -177,4 +177,40 @@ This is critical to avoid spending 80% of your time on build issues.
 4.  **Test Before Pushing (if CI is in place):** If you have a CI pipeline that runs `pnpm build`, ensure your changes pass locally before pushing to avoid breaking the build for others.
 5.  **`.gitignore`:** Ensure `node_modules`, `dist` folders, `.turbo`, `.tsbuildinfo` files, etc., are correctly gitignored. (Your current `.gitignore` seems to cover most of these).
 
-By following these practices, you can significantly reduce the time spent on recurrent build issues and maintain a more stable and predictable development environment. The key is methodical work, understanding the interactions between your tools, and making small, verifiable changes. 
+By following these practices, you can significantly reduce the time spent on recurrent build issues and maintain a more stable and predictable development environment. The key is methodical work, understanding the interactions between your tools, and making small, verifiable changes.
+
+## Final Build Success and Key Learnings (Session Ending YYYY-MM-DD)
+
+After numerous attempts and layered fixes, a stable and successful monorepo build (`pnpm build`) was achieved. The primary remaining blocker was a persistent `glob` module resolution issue within `packages/shader-lib` when built via Turbo, often accompanied by `pnpm install` warnings about "Failed to create bin".
+
+**Key Breakthroughs and Solutions:**
+
+1.  **Aggressive pnpm Cache/Artifact Cleaning:** The most critical step was a thorough cleaning of pnpm-related artifacts. This involved:
+    *   Deleting the root `node_modules` folder.
+    *   Deleting `packages/shader-lib/node_modules` (and potentially any problematic package's `node_modules`).
+    *   Deleting the root `pnpm-lock.yaml` file.
+    *   Running `pnpm store prune` to clean corrupted or inconsistent packages from pnpm's global cache.
+
+2.  **Clean `pnpm install`:** Following the aggressive clean, a fresh `pnpm install` was executed. Crucially, this install completed *without* the previous "Failed to create bin" warnings, especially for `glob`. This indicated that pnpm was now able to correctly set up its shims and links.
+
+3.  **Turbo Environment Configuration (`turbo.json`):**
+    *   `PNPM_HOME` was added to `globalEnv`: `"PNPM_HOME=/Users/danniwang/Library/pnpm"`.
+    *   `PATH` was added to `globalPassThroughEnv`: `["PATH"]`.
+    *   These changes ensure that tasks orchestrated by Turbo inherit the correct environment variables necessary for pnpm to function correctly, especially for resolving binaries and modules invoked by `pnpm exec` or scripts run via `node` that rely on pnpm's `node_modules` structure.
+
+4.  **Dependency Scope for `shader-lib` Build Tools:**
+    *   `glob` and `fs-extra` were moved from `devDependencies` to `dependencies` in `packages/shader-lib/package.json`. While the clean pnpm state was likely the primary fix for `glob` resolution, having build-critical tools as direct dependencies can sometimes offer more resilience in complex monorepo setups, especially if scripts are run directly with `node` rather than `pnpm exec` (though `pnpm exec` is preferred).
+
+5.  **ESLint Warning Resolution (`apps/web-app`):**
+    *   **`LandingSection2.tsx`**: `targetOrbPosition` was wrapped in `useMemo` to resolve `react-hooks/exhaustive-deps`.
+    *   **`VideoBackground.tsx`**: `any` types for `ScrollTrigger` instances were replaced with the specific `ScrollTrigger` type.
+    *   **`HUDLayer.tsx`**: Type errors were resolved by explicitly typing the `scenes` array with `SceneName` (derived from an exported `SceneState` from `SceneStore.ts`) and removing an unnecessary `as any` cast.
+    *   **`orb/__tests__/Orb.test.tsx`**: `any` in a Jest mock for `@react-three/drei`'s `Sphere` component was replaced with `{ children?: React.ReactNode } & Omit<MeshProps, 'children'>`.
+    *   **`CardGalleryStore.ts`**: `any` types for `filters` were changed to `unknown` as a safer placeholder pending full type definition.
+
+**Outcome:**
+*   A full `pnpm build` now completes successfully with no errors.
+*   Previously problematic ESLint warnings in `apps/web-app` have been resolved.
+*   All relevant packages (`packages/*`, `services/*`, `workers/*`) consistently generate their `dist` output directories, including `packages/text-tool` which was previously missing its `dist` folder.
+
+This successful resolution highlights the importance of ensuring a clean package manager state (especially with pnpm's complex store and linking mechanisms) and correctly configuring the execution environment for build tools like Turbo.

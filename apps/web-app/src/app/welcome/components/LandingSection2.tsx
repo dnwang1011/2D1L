@@ -1,11 +1,12 @@
 // apps/web-app/src/app/welcome/components/LandingSection2.tsx
 'use client';
 
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+// import { ScrollTrigger } from 'gsap/ScrollTrigger'; // Commented out
 import { useOrbStore } from '../../../stores/OrbStore';
-// ScrollTrigger registered globally
+
+// gsap.registerPlugin(ScrollTrigger); // Commented out
 
 export default function LandingSection2() {
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -15,7 +16,7 @@ export default function LandingSection2() {
   // Define target Orb position for this section (e.g., bottom-left of viewport)
   // These are conceptual. Actual 3D positioning depends on OrbLayer's camera setup.
   // For a fixed OrbLayer canvas, these would be world coordinates.
-  const targetOrbPosition: [number, number, number] = [-2.5, -1.5, 0]; // Example: More left and down
+  const targetOrbPosition = useMemo<[number, number, number]>(() => [-2.5, -1.5, 0], []);
 
   useEffect(() => {
     const section = sectionRef.current;

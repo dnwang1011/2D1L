@@ -1,7 +1,9 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
+
 import { useOrbStore } from '../../stores/OrbStore';
+
 import Orb from './Orb';
 
 /**

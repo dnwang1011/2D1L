@@ -3,8 +3,9 @@
 import './globals.css';
 import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import ModalLayer from '../components/modal/ModalLayer';
+
 import HUDLayer from '../components/hud/HUDLayer';
+import ModalLayer from '../components/modal/ModalLayer';
 
 export default function RootLayout({
   children,

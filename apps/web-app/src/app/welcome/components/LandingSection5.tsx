@@ -1,21 +1,23 @@
 // apps/web-app/src/app/welcome/components/LandingSection5.tsx
 'use client';
 
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import OrbChatBubble from './OrbChatBubble';
+
 import { useOrbStore } from '../../../stores/OrbStore';
-// ScrollTrigger registered globally
+
+import OrbChatBubble from './OrbChatBubble';
 
 export default function LandingSection5() {
   const sectionRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const chatBubble1Ref = useRef<HTMLDivElement>(null);
   const chatBubble2Ref = useRef<HTMLDivElement>(null);
   const card1Ref = useRef<HTMLDivElement>(null);
   const card2Ref = useRef<HTMLDivElement>(null);
-  const { setVisualState: setOrbVisualState, setPosition: setOrbPosition } = useOrbStore();
-  const targetOrbPosition: [number, number, number] = [-2.5, -1.5, 0]; // Maintain Orb position
+  const { setVisible: setOrbVisible, setPosition: setOrbPosition, setVisualState: setOrbVisualState } = useOrbStore();
+
+  const targetOrbPosition = useMemo<[number, number, number]>(() => [0, 1.5, 0], []); // Example, adjust as needed
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -67,7 +69,7 @@ export default function LandingSection5() {
       id="landing-section-5"
       className="landing-section flex items-center justify-center" // Represents duration of artifact demo video
     >
-      <div className="landing-content w-full flex flex-col md:flex-row items-center justify-around p-8 md:p-16">
+      <div ref={contentRef} className="landing-content w-full flex flex-col md:flex-row items-center justify-around p-8 md:p-16">
         {/* Left Side: Orb Chat Bubbles */}
         <div className="w-full md:w-1/2 flex flex-col items-start space-y-6 mb-8 md:mb-0 md:pr-8">
           <div ref={chatBubble1Ref} style={{ opacity: 0, transform: 'translateY(20px) scale(0.9)' }}>

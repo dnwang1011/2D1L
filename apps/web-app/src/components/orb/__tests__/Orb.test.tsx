@@ -1,8 +1,9 @@
-import React from 'react';
+import { Canvas, type MeshProps } from '@react-three/fiber';
 import { render } from '@testing-library/react';
-import { Canvas } from '@react-three/fiber';
-import Orb from '../Orb';
+import React from 'react';
+
 import { useOrbStore } from '../../../stores/OrbStore';
+import Orb from '../Orb';
 
 // Mock the OrbStore
 jest.mock('../../../stores/OrbStore');
@@ -10,7 +11,7 @@ const mockUseOrbStore = useOrbStore as jest.MockedFunction<typeof useOrbStore>;
 
 // Mock Three.js components
 jest.mock('@react-three/drei', () => ({
-  Sphere: ({ children, ...props }: any) => (
+  Sphere: ({ children, ...props }: { children?: React.ReactNode } & Omit<MeshProps, 'children'>) => (
     <mesh {...props} data-testid="orb-sphere">
       {children}
     </mesh>

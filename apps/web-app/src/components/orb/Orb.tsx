@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
 import { Sphere } from '@react-three/drei';
-import { useOrbStore } from '../../stores/OrbStore';
+import { useFrame } from '@react-three/fiber';
+import { useRef } from 'react';
 import type { Mesh } from 'three';
+
+import { useOrbStore } from '../../stores/OrbStore';
 
 // Emotional tone to color mapping
 const emotionalColors = {

@@ -8,7 +8,11 @@
   "globalEnv": [
     "NODE_ENV",
     "DATABASE_URL",
-    "GOOGLE_API_KEY"
+    "GOOGLE_API_KEY",
+    "PNPM_HOME=/Users/danniwang/Library/pnpm"
+  ],
+  "globalPassThroughEnv": [
+    "PATH"
   ],
   "ui": "tui",
   "dangerouslyDisablePackageManagerCheck": false,

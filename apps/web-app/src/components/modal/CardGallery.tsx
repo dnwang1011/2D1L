@@ -139,10 +139,10 @@ export default function CardGallery() {
                   </h4>
                   <div className="space-y-xs">
                     <div className="text-body-small text-sys-color-onSurface opacity-70">
-                      → Connected to "Personal Growth" 3 days ago
+                      → Connected to &quot;Personal Growth&quot; 3 days ago
                     </div>
                     <div className="text-body-small text-sys-color-onSurface opacity-70">
-                      → Influenced by "Daily Reflection" 1 week ago
+                      → Influenced by &quot;Daily Reflection&quot; 1 week ago
                     </div>
                   </div>
                   

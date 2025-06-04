@@ -1,8 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
+
 import { useModalStore } from '../stores/ModalStore';
 import { useOrbStore } from '../stores/OrbStore';
-import { useEffect } from 'react';
 
 export default function HomePage() {
   const { setActiveModal } = useModalStore();

@@ -1,12 +1,12 @@
 // apps/web-app/src/app/welcome/components/LandingSection6.tsx
 'use client';
 
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
+// import { ScrollTrigger } from 'gsap/ScrollTrigger'; // Removed
 import { useModalStore } from '../../../stores/ModalStore';
 import { useOrbStore } from '../../../stores/OrbStore';
-// ScrollTrigger registered globally
+// gsap.registerPlugin(ScrollTrigger); // Removed
 
 export default function LandingSection6() {
   const sectionRef = useRef<HTMLDivElement>(null);

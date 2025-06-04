@@ -75,7 +75,7 @@ export default function Dashboard() {
                 Growth Opportunity
               </h4>
               <p className="text-body-medium text-sys-color-onSurface">
-                Your "communication skills" concept is ready to evolve. Try expressing your recent insights through a new medium.
+                Your &quot;communication skills&quot; concept is ready to evolve. Try expressing your recent insights through a new medium.
               </p>
             </div>
           </div>
