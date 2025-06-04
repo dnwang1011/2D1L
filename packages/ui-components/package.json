@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "sideEffects": false,
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc -b tsconfig.json --verbose --force",
     "dev": "tsc --watch",
     "lint": "eslint src --ext .ts,.tsx",
     "test": "jest",

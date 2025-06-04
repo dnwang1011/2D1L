@@ -153,6 +153,9 @@ importers:
 
   apps/backend-api:
     dependencies:
+      '@2dots1line/shared-types':
+        specifier: workspace:^0.1.0
+        version: link:../../packages/shared-types
       '@prisma/client':
         specifier: ^5.10.2
         version: 5.22.0(prisma@5.22.0)

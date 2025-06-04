@@ -61,7 +61,7 @@ This was the most complex part of the debugging, involving multiple packages.
         *   **`composite: true`:** Mandatory for any package that is referenced by another or references others.
         *   **`declaration: true` (and `declarationMap: true`):** Essential for generating `.d.ts` files. Usually inherited from `tsconfig.base.json` if `composite` is true there.
         *   **`noEmit: false`:** Ensure output is actually generated.
-        *   **`rootDir: "./src"` and `outDir: "./dist"`:** Standard for source and output.
+        *   **`rootDir` and `outDir`:** Standard for source and output.
         *   **`"references": [{ "path": "../dependent-package" }]`:** Correctly list all internal workspace dependencies.
         *   **`"paths": {}` (in individual package `tsconfig.json` files):** This was CRITICAL. `tsconfig.base.json` had `paths` aliases pointing to `src` directories (e.g., `"@2dots1line/shared-types": ["packages/shared-types/src"]`). When a composite project (e.g., `tool-registry`) referenced another (e.g., `shared-types`), inheriting these `src`-pointing paths caused `tsc -b` to attempt to recompile the *source files* of `shared-types` from within `tool-registry`'s context, leading to `rootDir` errors (TS6059). Clearing `paths` with `{}` in the individual package's `tsconfig.json` forces `tsc -b` to rely solely on the `references` and consume the already built `dist` output from `shared-types`, as intended.
         *   **`"isolatedModules": false` (override):** `tsconfig.base.json` had `isolatedModules: true`. This needed to be overridden to `false` in the `tsconfig.json` of library packages being built with `tsc -b`, as `isolatedModules` can interfere with declaration emit and composite project builds.
@@ -300,3 +300,343 @@ To continue development while maintaining the hard-won stability of the build en
     *   If an agent-suggested change seems complex or risky, ask for an explanation or break it down further.
 
 By adhering to this structured approach, focusing on small, verifiable steps, and leveraging Git for isolation and history, you can significantly enhance development velocity and minimize time lost to complex build and integration problems. The "Best Practices for Maintaining a Stable Build Environment" detailed in Section 8 of this report remain paramount.
+
+## 10. Summary of Build Output Verification (Post-Refactoring)
+
+After the extensive build system refactoring, a systematic check was performed to ensure all relevant packages produce their expected output directories for consumption within the monorepo. The following summarizes the status:
+
+**Packages Verified to Produce `dist/` output:**
+
+*   `packages/agent-framework`
+*   `packages/ai-clients`
+*   `packages/canvas-core`
+*   `packages/core-utils`
+*   `packages/database`
+*   `packages/document-tool`
+*   `packages/orb-core`
+*   `packages/shader-lib` (also creates `src/generated` for its shaders)
+*   `packages/shared-types`
+*   `packages/text-tool`
+*   `packages/tool-registry`
+*   `packages/ui-components`
+*   `packages/utils`
+*   `packages/vision-tool`
+*   `apps/api-gateway`
+*   `apps/backend-api`
+*   `services/cognitive-hub`
+*   `workers/embedding-worker`
+*   `workers/insight-worker`
+*   `workers/scheduler`
+
+**Application-Specific Output Directories:**
+
+*   `apps/web-app`: Produces a `.next/` directory (standard for Next.js applications).
+
+**Exceptions (Not Expected to Produce `dist/` for General Monorepo Consumption):**
+
+*   `apps/storybook`: Its build command (`storybook build`) produces a `storybook-static/` directory for deploying the Storybook instance, not a `dist/` folder for typical library consumption.
+*   Root-level utility, asset, documentation, and data directories (e.g., `.github/`, `3d-assets/`, `config/`, `docs/`, `infrastructure/`, `neo4j_data/`, etc.) are not buildable code packages and do not produce `dist/` outputs.
+
+This verification confirms that the build system is now consistently producing the necessary artifacts for all interdependent packages within the monorepo, aligning with their `package.json` `main`/`types` fields and `tsconfig.json` configurations.
+
+## 11. Step-by-Step Guide for a Thorough Clean Monorepo Build
+
+This section provides a definitive guide to performing a completely clean build of the monorepo. This is useful when suspecting issues related to cached artifacts, stale dependencies, or ensuring the build process is sound from the ground up.
+
+**Objective:** To achieve a successful full monorepo build from a pristine state, including handling the Prisma client generation.
+
+**Steps:**
+
+1.  **Clean the Workspace (Root Directory):**
+    *   Remove the root `node_modules` directory:
+        ```bash
+        rm -rf node_modules
+        ```
+    *   Remove the `pnpm-lock.yaml` file:
+        ```bash
+        rm -f pnpm-lock.yaml
+        ```
+    *   Remove all `dist` directories from packages, apps, services, and workers:
+        ```bash
+        find packages apps services workers -name dist -type d -prune -exec rm -rf '{}' +
+        ```
+    *   Remove all `next build` output directories from Next.js apps (e.g., `apps/web-app`):
+        ```bash
+        find apps -name .next -type d -prune -exec rm -rf '{}' +
+        ```
+    *   Remove all nested `node_modules` directories:
+        ```bash
+        find packages apps services workers -name node_modules -type d -prune -exec rm -rf '{}' +
+        ```
+    *   Remove all TypeScript build info files:
+        ```bash
+        find packages apps services workers -name tsconfig.tsbuildinfo -type f -delete
+        ```
+    *   Remove all nested `.turbo` cache directories:
+        ```bash
+        find packages apps services workers -name .turbo -type d -prune -exec rm -rf '{}' +
+        ```
+    *   Remove the root `.turbo` cache directory:
+        ```bash
+        rm -rf .turbo
+        ```
+    *   **Expected Outcome:** Your workspace is now free of previous build artifacts and dependency installations, except for pnpm's global store.
+
+2.  **Prune the pnpm Store:**
+    *   This removes orphaned and unreferenced packages from pnpm's global content-addressable store.
+        ```bash
+        pnpm store prune
+        ```
+    *   **Expected Outcome:** A message confirming that cached metadata and potentially some files/packages have been removed.
+
+3.  **Install Dependencies:**
+    *   Perform a fresh installation of all dependencies using pnpm.
+        ```bash
+        pnpm install
+        ```
+    *   **Expected Outcome:** `pnpm install` completes successfully. You will see output related to dependency resolution, downloads, and linking, followed by any postinstall scripts (including Prisma's). Deprecation warnings for sub-dependencies are normal.
+
+4.  **Manually Generate Prisma Client (for `@2dots1line/database`):**
+    *   To ensure the Prisma client is correctly generated and available, especially after a very clean install, run this command:
+        ```bash
+        cd packages/database && pnpm exec prisma generate && cd ../..
+        ```
+    *   **Expected Outcome:** A success message indicating "Generated Prisma Client" into `packages/database/node_modules/.prisma/client`.
+
+5.  **Perform a Forced Full Monorepo Build:**
+    *   Use the `--force` flag with Turbo to ensure no cached build artifacts from previous partial builds are used.
+        ```bash
+        pnpm build --force
+        ```
+    *   **Expected Outcome:** The build process completes for all packages without any errors. You should see "Tasks: XX successful, XX total" and "Cached: 0 cached, XX total".
+
+**Committing Stable Configuration and Pushing to Main:**
+
+Once the above steps result in a consistently successful clean build, it's a good time to commit any configuration changes (`package.json`, `tsconfig.json`, etc.) that contributed to this stability.
+
+*Assumptions: Build artifacts like `dist/`, `.next/`, and `.tsbuildinfo` files are correctly listed in your `.gitignore` file and will not be committed.*
+
+1.  **Check Git Status:**
+    ```bash
+    git status
+    ```
+    *   Review the modified files. These should primarily be configuration files, source code, and potentially `pnpm-lock.yaml`.
+
+2.  **Stage Changes:**
+    ```bash
+    git add .
+    ```
+    *   Or stage files individually if you prefer more granular control.
+
+3.  **Commit Changes:**
+    ```bash
+    git commit -m "chore: stabilize monorepo build process and configurations"
+    ```
+    *   Use a clear and descriptive commit message.
+
+4.  **Ensure Local `main` Branch is Up-to-Date (Optional but Recommended):**
+    *   If you were working on a separate branch to fix the build:
+        ```bash
+        git checkout main
+        git pull origin main # Or your remote name for main
+        git merge your-build-fix-branch
+        # Resolve any merge conflicts if they occur, then commit the merge.
+        ```
+    *   If you were already on `main`, ensure it's synchronized with the remote:
+        ```bash
+        git pull origin main # Or your remote name for main
+        ```
+
+5.  **Push to `main`:**
+    ```bash
+    git push origin main # Or your remote name for main
+    ```
+    *   **Expected Outcome:** Your local changes, which ensure a stable and clean build process, are pushed to the remote `main` branch.
+
+This comprehensive clean build and commit process ensures that the repository's `main` branch always represents a state that can be reliably built from scratch.
+
+## 12. Recommended Workflow for Feature/Module Development
+
+This chapter outlines a recommended workflow for developing new features or modules within the monorepo, emphasizing stability, iterative progress, and proper integration.
+
+**A. Starting a New Feature or Module:**
+
+1.  **Ensure `main` is Up-to-Date:**
+    *   Before starting new work, make sure your local `main` branch is synchronized with the remote repository's `main` branch.
+        ```bash
+        git checkout main
+        git pull origin main # Replace 'origin' if your remote has a different name
+        ```
+    *   **Optional but Recommended:** Perform a clean build (as per Chapter 11) on `main` to ensure you're starting from a known good state.
+
+2.  **Create a Feature Branch:**
+    *   Create a new branch from `main` for your feature or module. Use a descriptive name.
+        ```bash
+        git checkout -b feat/my-new-feature  # Example: feat/user-profile-page
+        # or for a fix:
+        # git checkout -b fix/login-bug
+        ```
+    *   **Expected Outcome:** You are now on a new branch, isolated from `main`, where you can make changes.
+
+**B. Developing the Feature/Module:**
+
+1.  **Locating or Creating Packages/Files:**
+    *   Identify the existing package(s) (`apps/*`, `services/*`, `packages/*`, `workers/*`) where your new code will reside.
+    *   If creating a new package, follow the established structure and ensure it's added to `pnpm-workspace.yaml` and any relevant `tsconfig.json` references in consuming packages.
+
+2.  **Installing New Dependencies:**
+    *   **Workspace-level (Root) Dev Dependencies:** If a new tool is needed for the entire workspace (e.g., a new linter plugin), add it to the root `package.json`:
+        ```bash
+        pnpm add -D -w <new-dev-module-name>
+        ```
+    *   **Package-Specific Dependencies:** If a package requires a new external library:
+        ```bash
+        # Navigate to the package if you prefer, or use --filter
+        cd packages/<your-package>
+        pnpm add <new-module-name>
+        # or from the root:
+        # pnpm --filter @2dots1line/<your-package> add <new-module-name>
+        ```
+    *   **Internal Workspace Dependencies:** If your feature in `package-A` now needs to use `package-B` from the workspace:
+        *   Edit `packages/package-A/package.json` and add `"@2dots1line/package-B": "workspace:^"`.
+        *   Update `packages/package-A/tsconfig.json` to include `{ "path": "../package-B" }` in its `references`.
+    *   After adding dependencies, `pnpm install` is often run automatically by these commands, but you can run it explicitly from the root if needed:
+        ```bash
+        pnpm install
+        ```
+    *   **Expected Outcome:** New dependencies are installed, and `pnpm-lock.yaml` is updated.
+
+3.  **Writing Code & Incremental Builds:**
+    *   Make your code changes incrementally.
+    *   **Local Package Build:** After making changes within a specific package (`my-package`):
+        ```bash
+        pnpm --filter @2dots1line/my-package build
+        ```
+        Address any TypeScript or build errors immediately.
+    *   **Linting and Formatting:** Regularly apply linting and formatting to your changes.
+        ```bash
+        # For specific files, or run from root for all staged files via lint-staged on commit
+        pnpm lint <path/to/your/file.ts>
+        pnpm prettier --write <path/to/your/file.ts>
+        ```
+    *   **Testing:**
+        *   Write unit tests for new functions and logic. Run them with:
+            ```bash
+            pnpm --filter @2dots1line/my-package test
+            ```
+        *   For UI changes, manually test in the browser.
+
+4.  **Committing Changes to the Feature Branch:**
+    *   Commit your work frequently in small, logical, and *working* increments. A commit should represent a self-contained piece of progress.
+    *   Before each commit on your feature branch:
+        1.  Ensure the specific package(s) you worked on build locally.
+        2.  Consider running a full monorepo build if changes are significant or cross-cutting: `pnpm build`.
+        3.  Ensure tests for your changes pass.
+    *   Example commit:
+        ```bash
+        git add . # Or specific files
+        git commit -m "feat(user-profile): implement basic profile data display"
+        ```
+    *   **Expected Outcome:** Your feature branch progresses with a history of stable, working changes.
+
+**C. Finalizing and Merging the Feature:**
+
+1.  **Complete Feature Development & Testing:**
+    *   Ensure all aspects of the feature are implemented as per requirements.
+    *   Complete all necessary unit and integration tests.
+    *   Perform thorough end-to-end testing if applicable.
+
+2.  **Update Feature Branch with Latest `main`:**
+    *   Before merging, rebase your feature branch onto the latest `main` to incorporate any changes made by others and to maintain a linear history.
+        ```bash
+        git checkout feat/my-new-feature
+        git fetch origin # Fetch latest changes from remote
+        git rebase origin/main
+        ```
+    *   Resolve any merge conflicts that arise during the rebase.
+    *   **Crucially, after a successful rebase, run a full clean build and all relevant tests again:**
+        ```bash
+        # Consider a full clean if many changes were pulled from main (see Chapter 11)
+        # Then:
+        pnpm install # If lockfile changed or clean was aggressive
+        cd packages/database && pnpm exec prisma generate && cd ../.. # if database schema or client use changed
+        pnpm build --force
+        pnpm test # Run all tests or relevant ones
+        ```
+    *   **Expected Outcome:** Your feature branch is up-to-date with `main` and is confirmed to build and pass tests.
+
+3.  **Create a Pull Request (PR):**
+    *   Push your feature branch to the remote repository:
+        ```bash
+        git push origin feat/my-new-feature
+        ```
+    *   Go to your Git hosting platform (e.g., GitHub, GitLab) and create a Pull Request from your feature branch to `main`.
+    *   Write a clear PR description: what the feature does, why it's needed, how it was implemented, and any specific testing instructions.
+    *   Link to any relevant issues or tasks.
+
+4.  **Code Review & CI Checks (If Applicable):**
+    *   If your project has a Continuous Integration (CI) pipeline, it should automatically run builds and tests on the PR.
+    *   If working in a team, your PR will be reviewed by other developers. Address any feedback.
+
+5.  **Merge to `main`:**
+    *   Once the PR is approved and all checks pass, merge it into `main` (usually via the Git hosting platform's UI, often using a "squash and merge" or "rebase and merge" strategy).
+    *   Delete the feature branch after merging (optional, but good practice).
+
+6.  **Post-Merge Verification (Optional but Recommended):**
+    *   After your PR is merged, pull the latest `main` locally and run a final build/test cycle to be absolutely sure.
+        ```bash
+        git checkout main
+        git pull origin main
+        # Optional: pnpm build --force, pnpm test
+        ```
+
+This workflow helps ensure that new development is done in an isolated manner, integrated carefully, and that the `main` branch remains stable and buildable at all times.
+
+
+
+
+## Summary of Output Directories:
+
+### The following packages/applications produce specific build output directories:
+
+Packages (packages/*): All packages in this directory now correctly produce a dist/ directory.
+agent-framework
+ai-clients
+canvas-core
+core-utils
+database
+document-tool
+orb-core
+shader-lib (also creates src/generated)
+shared-types
+text-tool
+tool-registry
+ui-components
+utils
+vision-tool
+Applications (apps/*):
+apps/api-gateway: Produces a dist/ directory.
+apps/backend-api: Produces a dist/ directory.
+apps/web-app: Produces a .next/ directory (standard for Next.js applications).
+apps/storybook: This application is an exception. Its build command storybook build produces a storybook-static/ directory. It does not produce a dist/ directory for general consumption within the monorepo in the same way library packages do.
+Services (services/*):
+services/cognitive-hub: Produces a dist/ directory.
+Workers (workers/*): All workers in this directory now correctly produce a dist/ directory.
+workers/embedding-worker
+workers/insight-worker
+workers/scheduler
+
+### Directories NOT Expected to Produce dist/ (or similar build artifacts for monorepo consumption):
+
+Root-level configuration/asset/documentation directories:
+.github/
+.husky/
+.turbo/ (cache directory)
+3d-assets/
+archive/
+config/
+docs/
+infrastructure/
+neo4j_data/, postgres_data/, redis_data/, weaviate_data/ (data stores)
+temp_pnpm_version_check/
+The monorepo root directory itself.
