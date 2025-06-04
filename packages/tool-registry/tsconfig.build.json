@@ -1,17 +1,23 @@
 {
-  "extends": "../../tsconfig.base.json", // Correct relative path to root base config
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
     "composite": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "noEmit": false // Ensure this package actually emits JS
+    "noEmit": false,
+    "isolatedModules": false,
+    "lib": ["es2020"],
+    "paths": {}
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts", "src/__tests__"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "src/__tests__"
+  ],
   "references": [
-    { "path": "../shared-types" } // Add reference to shared-types
+    { "path": "../shared-types" }
   ]
 } 

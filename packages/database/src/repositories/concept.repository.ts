@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma } from '../prisma-client';
 import { DatabaseService } from '../index';
 
 export interface CreateConceptData {
@@ -7,7 +7,7 @@ export interface CreateConceptData {
   type: string;
   description?: string;
   confidence?: number;
-  metadata?: Prisma.InputJsonValue;
+  metadata?: any;
 }
 
 export interface CreateConceptRelationshipData {
@@ -17,14 +17,14 @@ export interface CreateConceptRelationshipData {
   relationship_type: string;
   strength?: number;
   context_muid?: string;
-  metadata?: Prisma.InputJsonValue;
+  metadata?: any;
 }
 
 export interface CreateConceptInput {
   name: string;
   type: string;
   description?: string;
-  metadata?: Prisma.JsonValue;
+  metadata?: any;
 }
 
 export interface UpdateConceptInput {
@@ -32,7 +32,7 @@ export interface UpdateConceptInput {
   type?: string;
   description?: string;
   confidence?: number;
-  metadata?: Prisma.JsonValue;
+  metadata?: any;
 }
 
 export class ConceptRepository {

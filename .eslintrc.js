@@ -1,14 +1,12 @@
 module.exports = {
   root: true,
   parser: '@typescript-eslint/parser',
-  plugins: ['@typescript-eslint', 'import', 'react', 'react-hooks', 'glsl'],
+  plugins: ['@typescript-eslint', 'import'],
   extends: [
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:import/recommended',
     'plugin:import/typescript',
-    'plugin:react/recommended',
-    'plugin:react-hooks/recommended',
     'prettier'
   ],
   env: {
@@ -17,15 +15,11 @@ module.exports = {
     es6: true
   },
   settings: {
-    react: {
-      version: 'detect'
-    },
     'import/resolver': {
       typescript: {}
     }
   },
   rules: {
-    // Common rules for all packages
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     '@typescript-eslint/no-explicit-any': 'warn',
     'import/no-unresolved': 'error',
@@ -36,7 +30,6 @@ module.exports = {
         'newlines-between': 'always',
         'alphabetize': { 'order': 'asc', 'caseInsensitive': true }
       }
-    ],
-    'react/react-in-jsx-scope': 'off'
+    ]
   }
 }; 

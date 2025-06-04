@@ -3,7 +3,7 @@
  * Handles conversation and message persistence
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../prisma-client';
 
 // Type for conversation operations  
 type ConversationType = Awaited<ReturnType<PrismaClient['conversation']['findFirst']>>;

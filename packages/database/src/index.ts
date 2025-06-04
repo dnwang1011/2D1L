@@ -3,7 +3,7 @@
  * Provides client wrappers for PostgreSQL, Neo4j, Weaviate, and Redis
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from './prisma-client';
 import neo4j, { Driver } from 'neo4j-driver';
 import weaviate, { WeaviateClient } from 'weaviate-ts-client';
 import Redis, { Redis as RedisClient } from 'ioredis';

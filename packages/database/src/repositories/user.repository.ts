@@ -1,7 +1,5 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient, Prisma, User } from '../prisma-client';
 import { DatabaseService } from '../index';
-
-type User = Prisma.UserGetPayload<{}>
 
 export interface CreateUserData {
   email: string;

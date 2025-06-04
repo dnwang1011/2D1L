@@ -3,9 +3,7 @@
  * Handles media file persistence and metadata
  */
 
-import { PrismaClient, Prisma } from '@prisma/client';
-
-type Media = Prisma.MediaGetPayload<{}>
+import { PrismaClient, Prisma, Media } from '../prisma-client';
 
 export interface CreateMediaInput {
   muid?: string; // Optional memory unit link

@@ -4,6 +4,10 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "composite": true,
+    "noEmit": false,
+    "isolatedModules": false,
+    "lib": ["es2020"],
+    "paths": {},
     "declaration": true,
     "declarationMap": true,
     "skipLibCheck": true,
@@ -11,11 +15,7 @@
     "esModuleInterop": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "resolveJsonModule": true
   },
   "include": [
     "src/**/*.ts"
@@ -24,5 +24,11 @@
     "node_modules",
     "dist",
     "src/**/*.test.ts"
+  ],
+  "references": [
+    { "path": "../../packages/agent-framework/tsconfig.json" },
+    { "path": "../../packages/database/tsconfig.json" },
+    { "path": "../../packages/shared-types/tsconfig.json" },
+    { "path": "../../packages/tool-registry/tsconfig.build.json" }
   ]
 }

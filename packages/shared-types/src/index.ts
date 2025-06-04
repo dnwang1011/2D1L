@@ -22,6 +22,7 @@ export type {
   TNERResult,
   TNERToolInput,
   TNERToolOutput,
+  TExtractedEntity,
   LLMChatInputPayload,
   LLMChatResult,
   LLMChatToolInput,
@@ -54,6 +55,8 @@ export type {
   IngestionJob,
   InsightJob
 } from './ai/job.types';
+
+export type { TApiResponse } from './api';
 
 // Basic response types
 export interface TErrorResponse {

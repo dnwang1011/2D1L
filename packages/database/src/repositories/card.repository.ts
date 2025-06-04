@@ -4,7 +4,7 @@
  */
 
 import { DatabaseService } from '../index';
-import type { Prisma } from '@prisma/client';
+import type { Prisma } from '../prisma-client';
 
 export interface CardData {
   id: string;

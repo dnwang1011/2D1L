@@ -7,7 +7,7 @@ import { Router } from 'express';
 import { CardController } from '../controllers/card.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 
-const router = Router();
+const router: Router = Router();
 const cardController = new CardController();
 
 // Apply authentication middleware to all card routes

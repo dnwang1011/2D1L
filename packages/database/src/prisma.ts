@@ -3,7 +3,7 @@
  * Provides a wrapper around Prisma Client with health checks and connection management
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from './prisma-client';
 
 // Global singleton instance
 let prismaInstance: PrismaClient | null = null;

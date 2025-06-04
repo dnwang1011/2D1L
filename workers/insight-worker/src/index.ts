@@ -15,7 +15,7 @@ const CONNECTION = {
 };
 
 // Create worker
-const worker = new Worker(QUEUE_NAME, async (job: Job<InsightJob>) => {
+const worker: Worker<InsightJob, { status: string }, string> = new Worker(QUEUE_NAME, async (job: Job<InsightJob>) => {
   console.log(`Processing insight job ${job.id}`, job.data);
   
   // This is a placeholder for actual implementation
