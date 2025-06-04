@@ -20,6 +20,21 @@ export interface CreateConceptRelationshipData {
   metadata?: Prisma.InputJsonValue;
 }
 
+export interface CreateConceptInput {
+  name: string;
+  type: string;
+  description?: string;
+  metadata?: Prisma.JsonValue;
+}
+
+export interface UpdateConceptInput {
+  name?: string;
+  type?: string;
+  description?: string;
+  confidence?: number;
+  metadata?: Prisma.JsonValue;
+}
+
 export class ConceptRepository {
   private prisma: PrismaClient;
 
@@ -33,7 +48,7 @@ export class ConceptRepository {
   async createOrFindConcept(data: CreateConceptData) {
     try {
       // First try to find existing concept by name and type for the user
-      const existing = await this.prisma.concepts.findFirst({
+      const existing = await this.prisma.concept.findFirst({
         where: {
           user_id: data.user_id,
           name: data.name,
@@ -53,14 +68,14 @@ export class ConceptRepository {
           updateData.metadata = data.metadata;
         }
         
-        return await this.prisma.concepts.update({
+        return await this.prisma.concept.update({
           where: { concept_id: existing.concept_id },
           data: updateData,
         });
       }
 
       // Create new concept
-      return await this.prisma.concepts.create({
+      return await this.prisma.concept.create({
         data: {
           user_id: data.user_id,
           name: data.name,
@@ -85,7 +100,7 @@ export class ConceptRepository {
    * Get concept by ID
    */
   async getConceptById(conceptId: string, userId: string) {
-    return await this.prisma.concepts.findFirst({
+    return await this.prisma.concept.findFirst({
       where: {
         concept_id: conceptId,
         user_id: userId,
@@ -102,7 +117,7 @@ export class ConceptRepository {
       where.type = type;
     }
 
-    return await this.prisma.concepts.findMany({
+    return await this.prisma.concept.findMany({
       where,
       orderBy: { last_updated_ts: 'desc' },
       take: limit,
@@ -114,7 +129,7 @@ export class ConceptRepository {
    * Search concepts by name
    */
   async searchConceptsByName(userId: string, searchTerm: string, limit: number = 20) {
-    return await this.prisma.concepts.findMany({
+    return await this.prisma.concept.findMany({
       where: {
         user_id: userId,
         name: {
@@ -147,7 +162,7 @@ export class ConceptRepository {
    * Delete concept (soft delete by setting confidence to 0)
    */
   async softDeleteConcept(conceptId: string, userId: string) {
-    return await this.prisma.concepts.update({
+    return await this.prisma.concept.update({
       where: { concept_id: conceptId },
       data: {
         confidence: 0,
@@ -160,7 +175,7 @@ export class ConceptRepository {
    * Update concept confidence
    */
   async updateConceptConfidence(conceptId: string, confidence: number) {
-    return await this.prisma.concepts.update({
+    return await this.prisma.concept.update({
       where: { concept_id: conceptId },
       data: {
         confidence,

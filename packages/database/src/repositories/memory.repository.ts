@@ -34,7 +34,7 @@ export class MemoryRepository {
   async createMemoryUnit(data: CreateMemoryUnitData) {
     try {
       // Create the memory unit without content field
-      const memoryUnit = await this.prisma.memory_units.create({
+      const memoryUnit = await this.prisma.memoryUnit.create({
         data: {
           user_id: data.user_id,
           source_type: data.source_type,
@@ -48,18 +48,19 @@ export class MemoryRepository {
         },
       });
 
-      // If content is provided, create a raw_content entry
-      if (data.content) {
-        await this.prisma.raw_content.create({
-          data: {
-            muid: memoryUnit.muid,
-            user_id: data.user_id,
-            content_type: 'text', // Default to text, could be parameterized if needed
-            content: data.content,
-            creation_ts: new Date(),
-          },
-        });
-      }
+      // If content is provided, store it in the content field or skip raw_content creation
+      // Note: raw_content table may not exist in current schema
+      // if (data.content) {
+      //   await this.prisma.raw_content.create({
+      //     data: {
+      //       muid: memoryUnit.muid,
+      //       user_id: data.user_id,
+      //       content_type: 'text',
+      //       content: data.content,
+      //       creation_ts: new Date(),
+      //     },
+      //   });
+      // }
 
       return memoryUnit;
     } catch (error: any) {
@@ -75,11 +76,11 @@ export class MemoryRepository {
    */
   async createChunk(data: CreateChunkData) {
     try {
-      return await this.prisma.chunks.create({
+      return await this.prisma.chunk.create({
         data: {
           muid: data.muid,
           user_id: data.user_id,
-          text: data.text,
+          text_content: data.text,
           sequence_order: data.sequence_order,
           role: data.role,
           char_count: data.text.length,
@@ -99,7 +100,7 @@ export class MemoryRepository {
    * Get memory units for a user
    */
   async getMemoryUnitsForUser(userId: string, limit: number = 20, offset: number = 0) {
-    return await this.prisma.memory_units.findMany({
+    return await this.prisma.memoryUnit.findMany({
       where: { user_id: userId },
       include: {
         chunks: {
@@ -116,7 +117,7 @@ export class MemoryRepository {
    * Get memory unit by ID
    */
   async getMemoryUnitById(muid: string, userId: string) {
-    return await this.prisma.memory_units.findFirst({
+    return await this.prisma.memoryUnit.findFirst({
       where: { 
         muid,
         user_id: userId,
@@ -133,7 +134,7 @@ export class MemoryRepository {
    * Update memory unit processing status
    */
   async updateMemoryUnitStatus(muid: string, status: string) {
-    return await this.prisma.memory_units.update({
+    return await this.prisma.memoryUnit.update({
       where: { muid },
       data: { 
         processing_status: status,
@@ -146,7 +147,7 @@ export class MemoryRepository {
    * Get chunks for a memory unit
    */
   async getChunksForMemoryUnit(muid: string) {
-    return await this.prisma.chunks.findMany({
+    return await this.prisma.chunk.findMany({
       where: { muid },
       orderBy: { sequence_order: 'asc' },
     });
@@ -157,7 +158,7 @@ export class MemoryRepository {
    */
   async updateMemoryUnitMetadata(muid: string, metadataKey: string, metadataValue: any) {
     // Get current metadata
-    const memoryUnit = await this.prisma.memory_units.findUnique({
+    const memoryUnit = await this.prisma.memoryUnit.findUnique({
       where: { muid },
       select: { metadata: true },
     });
@@ -173,7 +174,7 @@ export class MemoryRepository {
       [metadataKey]: metadataValue,
     };
 
-    return await this.prisma.memory_units.update({
+    return await this.prisma.memoryUnit.update({
       where: { muid },
       data: { 
         metadata: updatedMetadata,

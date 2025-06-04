@@ -3,7 +3,11 @@
  * Handles conversation and message persistence
  */
 
-import { PrismaClient, conversations, conversation_messages } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+
+// Type for conversation operations  
+type ConversationType = Awaited<ReturnType<PrismaClient['conversation']['findFirst']>>;
+type ConversationMessageType = Awaited<ReturnType<PrismaClient['conversationMessage']['findFirst']>>;
 
 export interface CreateConversationInput {
   user_id: string;
@@ -37,10 +41,10 @@ export class ConversationRepository {
     userId: string, 
     sessionId?: string,
     title?: string
-  ): Promise<conversations> {
+  ): Promise<NonNullable<ConversationType>> {
     // Try to find existing conversation by session_id if provided
     if (sessionId) {
-      const existingConversation = await this.prisma.conversations.findFirst({
+      const existingConversation = await this.prisma.conversation.findFirst({
         where: {
           user_id: userId,
           metadata: {
@@ -57,7 +61,7 @@ export class ConversationRepository {
     }
 
     // Create new conversation
-    return await this.prisma.conversations.create({
+    return await this.prisma.conversation.create({
       data: {
         user_id: userId,
         title: title || 'New Conversation',
@@ -74,15 +78,15 @@ export class ConversationRepository {
   /**
    * Add a message to a conversation
    */
-  async addMessage(input: AddMessageInput): Promise<conversation_messages> {
-    const message = await this.prisma.conversation_messages.create({
+  async addMessage(input: AddMessageInput): Promise<NonNullable<ConversationMessageType>> {
+    const message = await this.prisma.conversationMessage.create({
       data: {
         conversation_id: input.conversation_id,
         user_id: input.user_id,
-        sender_type: input.sender_type,
-        message_text: input.message_text,
+        role: input.sender_type,
+        content: input.message_text,
         message_type: 'text',
-        media_attachments: input.media_attachments || null,
+        media_ids: [],
         timestamp: new Date(),
         processing_status: 'processed',
         metadata: input.metadata || {}
@@ -90,8 +94,8 @@ export class ConversationRepository {
     });
 
     // Update conversation's last_active_time timestamp
-    await this.prisma.conversations.update({
-      where: { conversation_id: input.conversation_id },
+    await this.prisma.conversation.update({
+      where: { id: input.conversation_id },
       data: { last_active_time: new Date() }
     });
 
@@ -104,10 +108,10 @@ export class ConversationRepository {
   async getMessages(
     conversationId: string, 
     options: GetMessagesOptions = {}
-  ): Promise<conversation_messages[]> {
+  ): Promise<NonNullable<ConversationMessageType>[]> {
     const { limit = 50, offset = 0, order = 'asc' } = options;
 
-    return await this.prisma.conversation_messages.findMany({
+    return await this.prisma.conversationMessage.findMany({
       where: { conversation_id: conversationId },
       orderBy: { timestamp: order },
       take: limit,
@@ -118,9 +122,9 @@ export class ConversationRepository {
   /**
    * Get conversation by ID
    */
-  async getConversation(conversationId: string): Promise<conversations | null> {
-    return await this.prisma.conversations.findUnique({
-      where: { conversation_id: conversationId }
+  async getConversation(conversationId: string): Promise<ConversationType> {
+    return await this.prisma.conversation.findUnique({
+      where: { id: conversationId }
     });
   }
 
@@ -130,10 +134,10 @@ export class ConversationRepository {
   async getUserConversations(
     userId: string, 
     options: GetMessagesOptions = {}
-  ): Promise<conversations[]> {
+  ): Promise<NonNullable<ConversationType>[]> {
     const { limit = 20, offset = 0 } = options;
 
-    return await this.prisma.conversations.findMany({
+    return await this.prisma.conversation.findMany({
       where: { user_id: userId },
       orderBy: { last_active_time: 'desc' },
       take: limit,
@@ -144,9 +148,9 @@ export class ConversationRepository {
   /**
    * End a conversation
    */
-  async endConversation(conversationId: string): Promise<conversations> {
-    return await this.prisma.conversations.update({
-      where: { conversation_id: conversationId },
+  async endConversation(conversationId: string): Promise<NonNullable<ConversationType>> {
+    return await this.prisma.conversation.update({
+      where: { id: conversationId },
       data: { 
         last_active_time: new Date(),
         metadata: {

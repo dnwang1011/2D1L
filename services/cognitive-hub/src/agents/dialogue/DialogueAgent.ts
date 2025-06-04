@@ -102,7 +102,7 @@ Always respond with genuine curiosity, emotional intelligence, and growth-orient
         result = await this.handleFileUpload(
           mediaFile,
           input.user_id,
-          conversation.conversation_id,
+          conversation.id,
           input.payload.message_text || undefined
         );
       } 
@@ -110,7 +110,7 @@ Always respond with genuine curiosity, emotional intelligence, and growth-orient
         result = await this.handleTextMessage(
           input.payload.message_text,
           input.user_id,
-          conversation.conversation_id
+          conversation.id
         );
       } 
       else {
@@ -124,7 +124,7 @@ Always respond with genuine curiosity, emotional intelligence, and growth-orient
         status: 'success',
         result,
         metadata: {
-          conversation_id: conversation.conversation_id,
+          conversation_id: conversation.id,
           processing_time_ms: Math.round(processingTime),
           orb_state: this.orbStateManager.getCurrentState()
         }
@@ -175,8 +175,8 @@ Always respond with genuine curiosity, emotional intelligence, and growth-orient
     const recentMessages = await this.conversationRepo.getMessages(conversationId, { limit: 10 });
     
     const conversationHistory = recentMessages.map(msg => ({
-      role: msg.sender_type === 'user' ? 'user' as const : 'assistant' as const,
-      content: msg.message_text || '',
+      role: msg.role === 'user' ? 'user' as const : 'assistant' as const,
+      content: msg.content || '',
       timestamp: msg.timestamp?.toISOString()
     }));
 
@@ -194,7 +194,7 @@ Always respond with genuine curiosity, emotional intelligence, and growth-orient
       }
     };
 
-    const llmResponse = await this.toolRegistry.executeTool('llm_chat', llmInput);
+    const llmResponse = await this.toolRegistry.executeTool('llm.chat', llmInput);
 
     if (llmResponse.status !== 'success' || !llmResponse.result?.text) {
       throw new Error(`LLM processing failed: ${llmResponse.error?.message || 'No response text'}`);
@@ -261,10 +261,10 @@ Always respond with genuine curiosity, emotional intelligence, and growth-orient
     const mediaRecord = await this.mediaRepo.createMedia({
       user_id: userId,
       type: mediaFile.type.startsWith('image/') ? 'image' : 'document',
-      url: mediaFile.url,
+      storage_url: mediaFile.url,
       original_name: mediaFile.name,
       mime_type: mediaFile.type,
-      size: mediaFile.size
+      file_size_bytes: mediaFile.size
     });
 
     let extractedContent = '';
@@ -321,7 +321,7 @@ Always respond with genuine curiosity, emotional intelligence, and growth-orient
       sender_type: 'user',
       message_text: fullMessageText,
       media_attachments: [{ 
-        media_id: mediaRecord.media_id, 
+        media_id: mediaRecord.id, 
         type: mediaRecord.type,
         url: mediaRecord.storage_url
       }]
@@ -336,9 +336,9 @@ Always respond with genuine curiosity, emotional intelligence, and growth-orient
         user_id: userId,
         region: 'us',
         payload: {
-          batch_id: `upload_${mediaRecord.media_id}_${Date.now()}`,
+          batch_id: `upload_${mediaRecord.id}_${Date.now()}`,
           content_items: [{
-            item_id: mediaRecord.media_id,
+            item_id: mediaRecord.id,
             text_content: extractedContent,
             source_type: 'file_upload',
             creation_timestamp: new Date().toISOString(),

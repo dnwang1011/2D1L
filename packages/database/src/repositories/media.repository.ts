@@ -3,16 +3,19 @@
  * Handles media file persistence and metadata
  */
 
-import { PrismaClient, media } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
+
+type Media = Prisma.MediaGetPayload<{}>
 
 export interface CreateMediaInput {
+  muid?: string; // Optional memory unit link
   user_id: string;
-  type: 'image' | 'document' | 'audio' | 'video';
-  url: string;
-  original_name: string;
-  mime_type: string;
-  size: number;
-  metadata?: any;
+  type: string;
+  storage_url: string;
+  original_name?: string;
+  mime_type?: string;
+  file_size_bytes?: number;
+  hash_value?: string;
 }
 
 export interface UpdateMediaInput {
@@ -27,18 +30,20 @@ export class MediaRepository {
   /**
    * Create a new media record
    */
-  async createMedia(input: CreateMediaInput): Promise<media> {
+  async createMedia(input: CreateMediaInput): Promise<Media> {
     return await this.prisma.media.create({
       data: {
+        muid: input.muid,
         user_id: input.user_id,
         type: input.type,
-        storage_url: input.url,
-        filename_original: input.original_name,
+        storage_url: input.storage_url,
+        original_name: input.original_name,
         mime_type: input.mime_type,
-        file_size_bytes: input.size,
-        extraction_status: 'pending',
+        file_size_bytes: input.file_size_bytes,
+        hash_value: input.hash_value,
+        processing_status: 'pending',
         created_at: new Date(),
-        metadata: input.metadata || {}
+        metadata: {}
       }
     });
   }
@@ -46,9 +51,9 @@ export class MediaRepository {
   /**
    * Get media by ID
    */
-  async getMedia(mediaId: string): Promise<media | null> {
+  async getMedia(mediaId: string): Promise<Media | null> {
     return await this.prisma.media.findUnique({
-      where: { media_id: mediaId }
+      where: { id: mediaId }
     });
   }
 
@@ -60,7 +65,7 @@ export class MediaRepository {
     type?: string,
     limit: number = 50,
     offset: number = 0
-  ): Promise<media[]> {
+  ): Promise<Media[]> {
     const where: any = { user_id: userId };
     if (type) {
       where.type = type;
@@ -77,11 +82,12 @@ export class MediaRepository {
   /**
    * Update media processing status and metadata
    */
-  async updateMedia(mediaId: string, input: UpdateMediaInput): Promise<media> {
+  async updateMedia(mediaId: string, input: UpdateMediaInput): Promise<Media> {
     return await this.prisma.media.update({
-      where: { media_id: mediaId },
+      where: { id: mediaId },
       data: {
-        ...input,
+        processing_status: input.extraction_status,
+        extracted_text: input.extracted_text,
         metadata: input.metadata
       }
     });
@@ -94,7 +100,7 @@ export class MediaRepository {
     mediaId: string, 
     extractedText?: string,
     metadata?: any
-  ): Promise<media> {
+  ): Promise<Media> {
     return await this.updateMedia(mediaId, {
       extraction_status: 'completed',
       extracted_text: extractedText,
@@ -105,7 +111,7 @@ export class MediaRepository {
   /**
    * Mark media as failed processing
    */
-  async markAsFailed(mediaId: string, error: string): Promise<media> {
+  async markAsFailed(mediaId: string, error: string): Promise<Media> {
     return await this.updateMedia(mediaId, {
       extraction_status: 'failed',
       metadata: { error }
@@ -115,9 +121,9 @@ export class MediaRepository {
   /**
    * Get pending media for processing
    */
-  async getPendingMedia(limit: number = 10): Promise<media[]> {
+  async getPendingMedia(limit: number = 10): Promise<Media[]> {
     return await this.prisma.media.findMany({
-      where: { extraction_status: 'pending' },
+      where: { processing_status: 'pending' },
       orderBy: { created_at: 'asc' },
       take: limit
     });
@@ -128,7 +134,7 @@ export class MediaRepository {
    */
   async deleteMedia(mediaId: string): Promise<void> {
     await this.prisma.media.delete({
-      where: { media_id: mediaId }
+      where: { id: mediaId }
     });
   }
 } 

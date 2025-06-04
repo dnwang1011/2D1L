@@ -3,10 +3,10 @@
  * Extracts captions and descriptions from images
  */
 
-import { Tool, TToolInput, TToolOutput, AI } from '@2dots1line/shared-types';
+import { Tool, TToolInput, TToolOutput, VisionCaptionInputPayload, VisionCaptionResult } from '@2dots1line/shared-types';
 
-export type VisionCaptionToolInput = TToolInput<AI.VisionCaptionInputPayload>;
-export type VisionCaptionToolOutput = TToolOutput<AI.VisionCaptionResult>;
+export type VisionCaptionToolInput = TToolInput<VisionCaptionInputPayload>;
+export type VisionCaptionToolOutput = TToolOutput<VisionCaptionResult>;
 
 export class VisionCaptionTool implements Tool<VisionCaptionToolInput, VisionCaptionToolOutput> {
   public name = 'vision_caption';

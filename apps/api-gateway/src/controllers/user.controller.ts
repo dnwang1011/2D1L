@@ -61,7 +61,7 @@ export class UserController {
       }
 
       // Use Prisma to query users table
-      const user = await this.databaseService.prisma.users.findUnique({
+      const user = await this.databaseService.prisma.user.findUnique({
         where: { user_id: userId },
         select: {
           growth_profile: true,
@@ -121,14 +121,14 @@ export class UserController {
 
       // Get growth profile and additional dashboard metrics using Prisma
       const [user, conceptCount, constellationCount, activityStats] = await Promise.all([
-        this.databaseService.prisma.users.findUnique({
+        this.databaseService.prisma.user.findUnique({
           where: { user_id: userId },
           select: { growth_profile: true }
         }),
-        this.databaseService.prisma.concepts.count({
+        this.databaseService.prisma.concept.count({
           where: { user_id: userId }
         }),
-        this.databaseService.prisma.derived_artifacts.count({
+        this.databaseService.prisma.derivedArtifact.count({
           where: { 
             user_id: userId,
             artifact_type: 'constellation'
@@ -205,7 +205,7 @@ export class UserController {
         return;
       }
 
-      const user = await this.databaseService.prisma.users.findUnique({
+      const user = await this.databaseService.prisma.user.findUnique({
         where: { user_id: userId },
         select: {
           user_id: true,

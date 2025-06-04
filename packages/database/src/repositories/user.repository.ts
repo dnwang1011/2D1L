@@ -1,5 +1,7 @@
-import { PrismaClient, users as UserModel } from '@prisma/client'; // Assuming Prisma client is generated and available
-import { DatabaseService } from '../index'; // Adjust path if DatabaseService is elsewhere
+import { PrismaClient, Prisma } from '@prisma/client';
+import { DatabaseService } from '../index';
+
+type User = Prisma.UserGetPayload<{}>
 
 export interface CreateUserData {
   email: string;
@@ -17,7 +19,7 @@ export class UserRepository {
     this.prisma = databaseService.prisma;
   }
 
-  async createUser(data: CreateUserData): Promise<UserModel> {
+  async createUser(data: CreateUserData): Promise<User> {
     if (!data.email || !data.password_hash) {
       throw new Error('Missing required fields for user creation: email, password_hash.');
     }
@@ -26,7 +28,7 @@ export class UserRepository {
     const nameValue = data.username || data.name;
     
     try {
-      const user = await this.prisma.users.create({
+      const user = await this.prisma.user.create({
         data: {
           email: data.email,
           name: nameValue,
@@ -47,10 +49,10 @@ export class UserRepository {
     }
   }
 
-  async findUserByEmail(email: string): Promise<UserModel | null> {
+  async findUserByEmail(email: string): Promise<User | null> {
     if (!email) return null;
     try {
-      return await this.prisma.users.findUnique({
+      return await this.prisma.user.findUnique({
         where: { email },
       });
     } catch (error) {
@@ -59,10 +61,10 @@ export class UserRepository {
     }
   }
 
-  async findUserById(id: string): Promise<UserModel | null> {
+  async findUserById(id: string): Promise<User | null> {
     if (!id) return null;
     try {
-      return await this.prisma.users.findUnique({
+      return await this.prisma.user.findUnique({
         where: { user_id: id },
       });
     } catch (error) {
@@ -71,10 +73,10 @@ export class UserRepository {
     }
   }
 
-  async findUserByName(name: string): Promise<UserModel | null> {
+  async findUserByName(name: string): Promise<User | null> {
     if (!name) return null;
     try {
-      return await this.prisma.users.findFirst({
+      return await this.prisma.user.findFirst({
         where: { name },
       });
     } catch (error) {
@@ -89,10 +91,10 @@ export class UserRepository {
    * Delete user by ID (hard delete from database)
    * Note: In production, consider soft delete by setting account_status to 'deleted'
    */
-  async deleteUser(id: string): Promise<UserModel | null> {
+  async deleteUser(id: string): Promise<User | null> {
     if (!id) return null;
     try {
-      const deletedUser = await this.prisma.users.delete({
+      const deletedUser = await this.prisma.user.delete({
         where: { user_id: id },
       });
       return deletedUser;
@@ -109,10 +111,10 @@ export class UserRepository {
    * Soft delete user by setting account_status to 'deleted'
    * Recommended for production to maintain data integrity
    */
-  async softDeleteUser(id: string): Promise<UserModel | null> {
+  async softDeleteUser(id: string): Promise<User | null> {
     if (!id) return null;
     try {
-      const updatedUser = await this.prisma.users.update({
+      const updatedUser = await this.prisma.user.update({
         where: { user_id: id },
         data: {
           account_status: 'deleted',

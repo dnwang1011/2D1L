@@ -8,12 +8,13 @@ import {
   Tool, 
   TToolInput, 
   TToolOutput,
-  AI
+  LLMChatInputPayload,
+  LLMChatResult
 } from '@2dots1line/shared-types';
 import { GoogleGenerativeAI, GenerativeModel, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 
-export type LLMChatToolInput = TToolInput<AI.LLMChatInputPayload>;
-export type LLMChatToolOutput = TToolOutput<AI.LLMChatResult>;
+export type LLMChatToolInput = TToolInput<LLMChatInputPayload>;
+export type LLMChatToolOutput = TToolOutput<LLMChatResult>;
 
 export class LLMChatTool implements Tool<LLMChatToolInput, LLMChatToolOutput> {
   public name = 'llm_chat';

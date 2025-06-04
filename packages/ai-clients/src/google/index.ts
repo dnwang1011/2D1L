@@ -21,12 +21,14 @@ export class GoogleAIClient implements ILLMClient {
     }
     this.apiKey = apiKey;
     this.client = new GoogleGenerativeAI(apiKey);
+    console.log('GoogleAIClient initialized with Gemini');
   }
 
   async chatCompletion(request: TChatCompletionRequest): Promise<TChatCompletionResponse> {
     try {
+      console.log(`GoogleAIClient: Using model ${request.model_id || 'gemini-1.5-flash'}`);
       const model = this.client.getGenerativeModel({ 
-        model: request.model_id || 'gemini-2.0-flash'
+        model: request.model_id || 'gemini-1.5-flash'
       });
 
       // Convert our messages format to Google's format
@@ -66,7 +68,7 @@ export class GoogleAIClient implements ILLMClient {
         id: uuidv4(),
         object: 'chat.completion',
         created: Date.now(),
-        model: request.model_id || 'gemini-2.0-flash',
+        model: request.model_id || 'gemini-1.5-flash',
         choices: [
           {
             index: 0,

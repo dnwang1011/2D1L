@@ -5,12 +5,22 @@
     ".node-version",
     "tsconfig.base.json"
   ],
+  "globalEnv": [
+    "NODE_ENV",
+    "DATABASE_URL",
+    "GOOGLE_API_KEY"
+  ],
+  "ui": "tui",
+  "dangerouslyDisablePackageManagerCheck": false,
+  "concurrency": "10",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "build/**", "!dist/tsconfig.tsbuildinfo"]
+      "outputs": ["dist/**", ".next/**", "build/**", "!dist/tsconfig.tsbuildinfo"],
+      "env": ["NODE_ENV"]
     },
     "lint": {
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "test": {
@@ -32,6 +42,9 @@
       "cache": false
     },
     "db:migrate:deploy": {
+      "cache": false
+    },
+    "db:weaviate:schema": {
       "cache": false
     },
     "db:seed": {

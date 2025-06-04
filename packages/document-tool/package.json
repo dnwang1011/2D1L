@@ -12,7 +12,7 @@
     "dev": "tsc -w"
   },
   "dependencies": {
-    "@2dots1line/shared-types": "file:../shared-types"
+    "@2dots1line/shared-types": "workspace:^0.1.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.5",

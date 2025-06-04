@@ -9,14 +9,14 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "dev": "tsc -w -p tsconfig.build.json",
     "lint": "eslint . --ext .ts",
     "test": "jest -c jest.config.js --coverage",
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
-    "@2dots1line/shared-types": "*",
+    "@2dots1line/shared-types": "workspace:^0.1.0",
     "compare-versions": "^6.1.0"
   },
   "devDependencies": {

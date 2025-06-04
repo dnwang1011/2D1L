@@ -307,7 +307,7 @@ export class IngestionAnalyst extends BaseAgent<
     result.chunks!.push(...chunks.map(chunk => ({
       cid: chunk.cid,
       muid: chunk.muid,
-      text_preview: (chunk.text || '').substring(0, 100) + ((chunk.text || '').length > 100 ? '...' : ''),
+      text_preview: (chunk.text_content || '').substring(0, 100) + ((chunk.text_content || '').length > 100 ? '...' : ''),
       sequence_order: chunk.sequence_order,
       role: chunk.role
     })));

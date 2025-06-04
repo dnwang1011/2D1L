@@ -11,7 +11,7 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@2dots1line/shared-types": "*",
+    "@2dots1line/shared-types": "workspace:^0.1.0",
     "three": "^0.160.0"
   },
   "devDependencies": {

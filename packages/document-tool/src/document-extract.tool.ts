@@ -3,10 +3,10 @@
  * Extracts text and metadata from documents
  */
 
-import { Tool, TToolInput, TToolOutput, AI } from '@2dots1line/shared-types';
+import { Tool, TToolInput, TToolOutput, DocumentExtractInputPayload, DocumentExtractResult } from '@2dots1line/shared-types';
 
-export type DocumentExtractToolInput = TToolInput<AI.DocumentExtractInputPayload>;
-export type DocumentExtractToolOutput = TToolOutput<AI.DocumentExtractResult>;
+export type DocumentExtractToolInput = TToolInput<DocumentExtractInputPayload>;
+export type DocumentExtractToolOutput = TToolOutput<DocumentExtractResult>;
 
 export class DocumentExtractTool implements Tool<DocumentExtractToolInput, DocumentExtractToolOutput> {
   public name = 'document_extract';

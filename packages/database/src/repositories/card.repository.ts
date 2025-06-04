@@ -155,7 +155,7 @@ export class CardRepository {
 
         switch (entity_type) {
           case 'memory_unit':
-            entityData = await prisma.memory_units.findUnique({
+            entityData = await prisma.memoryUnit.findUnique({
               where: { muid: entity_id, user_id: userId }
             });
             if (entityData) {
@@ -167,7 +167,7 @@ export class CardRepository {
             break;
 
           case 'concept':
-            entityData = await prisma.concepts.findUnique({
+            entityData = await prisma.concept.findUnique({
               where: { concept_id: entity_id, user_id: userId }
             });
             if (entityData) {
@@ -179,7 +179,7 @@ export class CardRepository {
             break;
 
           case 'derived_artifact':
-            entityData = await prisma.derived_artifacts.findUnique({
+            entityData = await prisma.derivedArtifact.findUnique({
               where: { artifact_id: entity_id, user_id: userId }
             });
             if (entityData) {

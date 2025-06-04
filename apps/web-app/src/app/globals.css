@@ -55,6 +55,18 @@
     box-shadow: theme('boxShadow.glass');
   }
 
+  /* SSR Placeholder Components */
+  .canvas-layer-placeholder {
+    @apply fixed inset-0 pointer-events-none;
+    z-index: theme('zIndex.canvas');
+    background: theme('colors.ref.palette.neutral.deepCosmos');
+  }
+
+  .orb-layer-placeholder {
+    @apply fixed inset-0 pointer-events-none;
+    z-index: theme('zIndex.orb');
+  }
+
   /* V7 3D Canvas Layer */
   .canvas-layer {
     @apply fixed inset-0 pointer-events-auto;

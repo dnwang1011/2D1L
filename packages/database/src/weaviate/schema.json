@@ -63,8 +63,8 @@
         },
         {
           "name": "metadata",
-          "dataType": ["object"],
-          "description": "Additional concept metadata",
+          "dataType": ["text"],
+          "description": "Additional concept metadata stored as JSON string",
           "indexInverted": false
         },
         {
@@ -164,7 +164,24 @@
           "name": "location",
           "dataType": ["object"],
           "description": "Location data (lat, lng, name)",
-          "indexInverted": false
+          "indexInverted": false,
+          "nestedProperties": [
+            {
+              "name": "latitude",
+              "dataType": ["number"],
+              "description": "Location latitude"
+            },
+            {
+              "name": "longitude", 
+              "dataType": ["number"],
+              "description": "Location longitude"
+            },
+            {
+              "name": "name",
+              "dataType": ["text"],
+              "description": "Location name or address"
+            }
+          ]
         },
         {
           "name": "embeddingModelVersion",
@@ -324,8 +341,8 @@
         },
         {
           "name": "metadata",
-          "dataType": ["object"],
-          "description": "Additional chunk metadata (page number, context, etc.)",
+          "dataType": ["text"],
+          "description": "Additional chunk metadata stored as JSON string (page number, context, etc.)",
           "indexInverted": false
         },
         {
