@@ -4,16 +4,20 @@ import React, { useState, useEffect, useCallback } from 'react';
 
 import { GlassmorphicPanel, GlassButton } from '@2dots1line/ui-components';
 
-import LoginModal from '../components/LoginModal';
-import SignupModal from '../components/SignupModal';
+import LoginModal from '../components/modal/LoginModal';
+import SignupModal from '../components/modal/SignupModal';
+import { HUDContainer } from '../components/hud';
+import { ModalContainer } from '../components/modal';
 
-import { useUserStore } from './stores/UserStore';
+import { useUserStore } from '../stores/UserStore';
+import { useHUDStore } from '../stores/HUDStore';
 
 const HomePage = () => {
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
   
   const { user, isAuthenticated, logout, initializeAuth, hasHydrated } = useUserStore();
+  const { setActiveModal, activeModal } = useHUDStore();
 
   // Memoize initializeAuth to prevent unnecessary re-renders
   const memoizedInitializeAuth = useCallback(() => {
@@ -28,6 +32,13 @@ const HomePage = () => {
     console.log('HomePage - localStorage token:', localStorage.getItem('auth_token'));
     console.log('HomePage - localStorage state:', localStorage.getItem('user-storage'));
   }, [memoizedInitializeAuth, user, isAuthenticated, hasHydrated]);
+
+  // Auto-open dashboard when user is authenticated and no modal is active
+  useEffect(() => {
+    if (isAuthenticated && hasHydrated && !activeModal) {
+      setActiveModal('dashboard');
+    }
+  }, [isAuthenticated, hasHydrated, activeModal, setActiveModal]);
 
   // Handle opening login modal
   const openLoginModal = () => {
@@ -50,6 +61,8 @@ const HomePage = () => {
   // Handle logout
   const handleLogout = () => {
     logout();
+    // Clear active modal on logout
+    setActiveModal(null);
   };
 
   // Don't render auth-dependent UI until hydration is complete
@@ -132,26 +145,31 @@ const HomePage = () => {
           </div>
         </nav>
 
-        {/* Centered Glassmorphism Panel */}
-        <GlassmorphicPanel 
-          variant="glass-panel"
-          rounded="xl" 
-          padding="lg"
-          className="w-full max-w-xl md:max-w-2xl text-center sm:rounded-2xl"
-        >
-          <h1 className="font-brand text-3xl sm:text-4xl md:text-5xl font-medium text-primary mb-4">
-            {isAuthenticated ? `Welcome back, ${user?.name || 'Explorer'}` : 'A New Horizon Awaits'}
-          </h1>
-          <p className="font-sans text-base sm:text-lg text-onSurface max-w-prose mx-auto">
-            {isAuthenticated 
-              ? 'Your journey continues. Explore the depths of reflection and discovery that await you.'
-              : 'Step into a space of reflection and connection. Discover the stories within, and watch your inner world expand.'
-            }
-          </p>
-        </GlassmorphicPanel>
+        {/* Centered Welcome Panel - Only shown when not authenticated */}
+        {!isAuthenticated && (
+          <GlassmorphicPanel 
+            variant="glass-panel"
+            rounded="xl" 
+            padding="lg"
+            className="w-full max-w-xl md:max-w-2xl text-center sm:rounded-2xl"
+          >
+            <h1 className="font-brand text-3xl sm:text-4xl md:text-5xl font-medium text-primary mb-4">
+              A New Horizon Awaits
+            </h1>
+            <p className="font-sans text-base sm:text-lg text-onSurface max-w-prose mx-auto">
+              Step into a space of reflection and connection. Discover the stories within, and watch your inner world expand.
+            </p>
+          </GlassmorphicPanel>
+        )}
       </main>
 
-      {/* Authentication Modals - Layer 3 (highest) */}
+      {/* Navigation HUD - Layer 3 */}
+      {isAuthenticated && <HUDContainer />}
+
+      {/* Navigation Modals - Layer 4 */}
+      {isAuthenticated && <ModalContainer />}
+
+      {/* Authentication Modals - Layer 5 (highest) */}
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={closeModals}

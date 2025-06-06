@@ -4,24 +4,22 @@ import React, { useState, FormEvent } from 'react';
 
 import { GlassmorphicPanel, GlassButton, InputField, ErrorMessage } from '@2dots1line/ui-components';
 
-import { useUserStore } from '../app/stores/UserStore';
+import { useUserStore } from '../../stores/UserStore';
 
-interface SignupModalProps {
+interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSwitchToLogin: () => void;
+  onSwitchToSignup: () => void;
 }
 
-const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSwitchToLogin }) => {
+const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onSwitchToSignup }) => {
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
     password: '',
-    confirmPassword: '',
   });
   const [validationErrors, setValidationErrors] = useState<{ [key: string]: string }>({});
 
-  const { signup, isLoading, error, clearError } = useUserStore();
+  const { login, isLoading, error, clearError } = useUserStore();
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,12 +47,6 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSwitchToLo
   const validateForm = (): boolean => {
     const errors: { [key: string]: string } = {};
 
-    if (!formData.name.trim()) {
-      errors.name = 'Name is required';
-    } else if (formData.name.length < 2) {
-      errors.name = 'Name must be at least 2 characters';
-    }
-
     if (!formData.email.trim()) {
       errors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -65,12 +57,6 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSwitchToLo
       errors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       errors.password = 'Password must be at least 6 characters';
-    }
-
-    if (!formData.confirmPassword.trim()) {
-      errors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
     }
 
     setValidationErrors(errors);
@@ -86,23 +72,23 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSwitchToLo
     }
 
     try {
-      console.log('SignupModal - Attempting signup with:', formData.email);
-      await signup(formData.email, formData.password, formData.name);
-      console.log('SignupModal - Signup successful, closing modal');
-      // Close modal on successful signup
+      console.log('LoginModal - Attempting login with:', formData.email);
+      await login(formData.email, formData.password);
+      console.log('LoginModal - Login successful, closing modal');
+      // Close modal on successful login
       onClose();
       // Reset form
-      setFormData({ name: '', email: '', password: '', confirmPassword: '' });
+      setFormData({ email: '', password: '' });
       setValidationErrors({});
     } catch (err) {
       // Error is handled by the store
-      console.error('SignupModal - Signup failed:', err);
+      console.error('LoginModal - Login failed:', err);
     }
   };
 
   // Handle modal close
   const handleClose = () => {
-    setFormData({ name: '', email: '', password: '', confirmPassword: '' });
+    setFormData({ email: '', password: '' });
     setValidationErrors({});
     clearError();
     onClose();
@@ -131,10 +117,10 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSwitchToLo
         {/* Header */}
         <div className="text-center mb-6">
           <h2 className="font-brand text-2xl sm:text-3xl font-medium text-primary mb-2">
-            Begin Your Journey
+            Welcome Back
           </h2>
           <p className="text-onSurface/70">
-            Create an account to start exploring
+            Sign in to continue your journey
           </p>
         </div>
 
@@ -143,18 +129,6 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSwitchToLo
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Name Field */}
-          <InputField
-            label="Full Name"
-            type="text"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            placeholder="Enter your full name"
-            error={validationErrors.name}
-            disabled={isLoading}
-          />
-
           {/* Email Field */}
           <InputField
             label="Email Address"
@@ -174,20 +148,8 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSwitchToLo
             name="password"
             value={formData.password}
             onChange={handleInputChange}
-            placeholder="Create a password"
+            placeholder="Enter your password"
             error={validationErrors.password}
-            disabled={isLoading}
-          />
-
-          {/* Confirm Password Field */}
-          <InputField
-            label="Confirm Password"
-            type="password"
-            name="confirmPassword"
-            value={formData.confirmPassword}
-            onChange={handleInputChange}
-            placeholder="Confirm your password"
-            error={validationErrors.confirmPassword}
             disabled={isLoading}
           />
 
@@ -197,23 +159,23 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSwitchToLo
             variant="primary"
             size="lg"
             isLoading={isLoading}
-            loadingText="Creating Account..."
+            loadingText="Signing In..."
             className="w-full"
           >
-            Create Account
+            Sign In
           </GlassButton>
         </form>
 
-        {/* Switch to Login */}
+        {/* Switch to Signup */}
         <div className="mt-6 text-center">
-          <p className="text-onSurface/70">
-            Already have an account?{' '}
+          <p className="text-sm text-white/70 text-center">
+            Don&apos;t have an account?{' '}
             <button
-              onClick={onSwitchToLogin}
-              className="text-primary hover:text-primary/80 font-medium transition-colors"
-              disabled={isLoading}
+              type="button"
+              onClick={onSwitchToSignup}
+              className="text-primary-400 hover:text-primary-300 font-medium transition-colors"
             >
-              Sign in
+              Sign up here
             </button>
           </p>
         </div>
@@ -233,4 +195,4 @@ const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onSwitchToLo
   );
 };
 
-export default SignupModal; 
+export default LoginModal; 
