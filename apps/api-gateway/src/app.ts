@@ -3,7 +3,18 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 // Load environment variables
-dotenv.config({ path: '../../.env' }); // Assuming .env is in monorepo root, or adjust path
+dotenv.config({ path: '../../.env' });
+
+// Manually resolve DATABASE_URL since dotenv doesn't support variable substitution
+if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('${')) {
+  const { POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_HOST_PORT, POSTGRES_DB_NAME } = process.env;
+  if (POSTGRES_USER && POSTGRES_PASSWORD && POSTGRES_HOST_PORT && POSTGRES_DB_NAME) {
+    process.env.DATABASE_URL = `postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@localhost:${POSTGRES_HOST_PORT}/${POSTGRES_DB_NAME}`;
+    console.log('DATABASE_URL resolved:', process.env.DATABASE_URL);
+  } else {
+    console.error('Missing PostgreSQL environment variables');
+  }
+}
 
 // Import routes (to be created)
 import { authRoutes } from './routes/auth.routes';

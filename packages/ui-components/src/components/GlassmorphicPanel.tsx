@@ -4,6 +4,7 @@ import { cn } from '../utils/cn';
 interface GlassmorphicPanelProps {
   children: React.ReactNode;
   className?: string;
+  variant?: 'glass-panel' | 'custom';
   opacity?: number;
   blur?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   border?: boolean;
@@ -16,6 +17,7 @@ interface GlassmorphicPanelProps {
 const GlassmorphicPanel: React.FC<GlassmorphicPanelProps> = ({
   children,
   className = '',
+  variant = 'glass-panel',
   opacity = 10,
   blur = 'md',
   border = true,
@@ -24,6 +26,41 @@ const GlassmorphicPanel: React.FC<GlassmorphicPanelProps> = ({
   padding = 'md',
   shadow = 'lg',
 }) => {
+  // If using the glass-panel variant, apply the CSS class directly
+  if (variant === 'glass-panel') {
+    const roundedClasses = {
+      none: '',
+      sm: 'rounded-sm',
+      md: 'rounded-md',
+      lg: 'rounded-lg',
+      xl: 'rounded-xl',
+      '2xl': 'rounded-2xl',
+      full: 'rounded-full',
+    };
+
+    const paddingClasses = {
+      none: '',
+      sm: 'p-2',
+      md: 'p-4',
+      lg: 'p-6',
+      xl: 'p-8',
+    };
+
+    return (
+      <div
+        className={cn(
+          'glass-panel',
+          roundedClasses[rounded],
+          paddingClasses[padding],
+          className
+        )}
+      >
+        {children}
+      </div>
+    );
+  }
+
+  // Custom variant with granular control
   const blurClasses = {
     sm: 'backdrop-blur-sm',
     md: 'backdrop-blur-md',

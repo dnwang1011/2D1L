@@ -1,104 +1,170 @@
 'use client';
 
-import { useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
-import { useModalStore } from '../stores/ModalStore';
-import { useOrbStore } from '../stores/OrbStore';
+import { GlassmorphicPanel, GlassButton } from '@2dots1line/ui-components';
 
-export default function HomePage() {
-  const { setActiveModal } = useModalStore();
-  const { setVisible: setOrbVisible, setEmotionalTone } = useOrbStore();
+import LoginModal from '../components/LoginModal';
+import SignupModal from '../components/SignupModal';
 
-  // Initialize the experience
+import { useUserStore } from './stores/UserStore';
+
+const HomePage = () => {
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isSignupModalOpen, setIsSignupModalOpen] = useState(false);
+  
+  const { user, isAuthenticated, logout, initializeAuth, hasHydrated } = useUserStore();
+
+  // Memoize initializeAuth to prevent unnecessary re-renders
+  const memoizedInitializeAuth = useCallback(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
+  // Initialize authentication state on component mount
   useEffect(() => {
-    // Show the Orb when the app loads
-    setOrbVisible(true);
-    setEmotionalTone('neutral');
-  }, [setOrbVisible, setEmotionalTone]);
+    memoizedInitializeAuth();
+    // Debug: Log current authentication state
+    console.log('HomePage - Auth state:', { user, isAuthenticated, hasHydrated });
+    console.log('HomePage - localStorage token:', localStorage.getItem('auth_token'));
+    console.log('HomePage - localStorage state:', localStorage.getItem('user-storage'));
+  }, [memoizedInitializeAuth, user, isAuthenticated, hasHydrated]);
+
+  // Handle opening login modal
+  const openLoginModal = () => {
+    setIsLoginModalOpen(true);
+    setIsSignupModalOpen(false);
+  };
+
+  // Handle opening signup modal
+  const openSignupModal = () => {
+    setIsSignupModalOpen(true);
+    setIsLoginModalOpen(false);
+  };
+
+  // Handle closing modals
+  const closeModals = () => {
+    setIsLoginModalOpen(false);
+    setIsSignupModalOpen(false);
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    logout();
+  };
+
+  // Don't render auth-dependent UI until hydration is complete
+  if (!hasHydrated) {
+    return (
+      <div className="relative w-full h-screen overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <video autoPlay loop muted playsInline className="w-full h-full object-cover" src="/videos/Cloud1.mp4">
+            Your browser does not support the video tag.
+          </video>
+          <div className="absolute inset-0 bg-black/30"></div>
+        </div>
+        <main className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4">
+          <div className="text-white">Loading...</div>
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div className="center-fixed max-w-2xl px-lg">
-      <div className="glass-panel p-xl rounded-large text-center animate-fade-in">
-        {/* Welcome Header */}
-        <div className="mb-xl">
-          <h1 className="text-display-large font-brand text-sys-color-primary mb-md">
-            Welcome to 2dots1line
-          </h1>
-          <p className="text-headline-medium font-brand text-sys-color-onSurface opacity-80 mb-lg">
-            Connect your thoughts, illuminate your life
-          </p>
-          <p className="text-body-large font-plain text-sys-color-onSurface opacity-70">
-            Your journey of self-discovery begins here. Explore the cosmos of your mind through an immersive experience that grows with you.
-          </p>
-        </div>
-
-        {/* Quick Start Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-lg mb-xl">
-          <button
-            onClick={() => setActiveModal('dashboard')}
-            className="glass-panel p-lg rounded-medium hover:card-hover transition-all duration-medium1 ease-standard text-center group"
-          >
-            <div className="text-4xl mb-sm">📊</div>
-            <h3 className="text-title-medium font-brand text-sys-color-primary mb-xs">
-              Cosmic Overview
-            </h3>
-            <p className="text-body-small font-plain text-sys-color-onSurface opacity-70">
-              See your growth across all dimensions
-            </p>
-          </button>
-
-          <button
-            onClick={() => setActiveModal('cardGallery')}
-            className="glass-panel p-lg rounded-medium hover:card-hover transition-all duration-medium1 ease-standard text-center group"
-          >
-            <div className="text-4xl mb-sm">🃏</div>
-            <h3 className="text-title-medium font-brand text-sys-color-primary mb-xs">
-              Knowledge Gallery
-            </h3>
-            <p className="text-body-small font-plain text-sys-color-onSurface opacity-70">
-              Explore your evolving constellation
-            </p>
-          </button>
-
-          <button
-            onClick={() => setActiveModal('chat')}
-            className="glass-panel p-lg rounded-medium hover:card-hover transition-all duration-medium1 ease-standard text-center group"
-          >
-            <div className="text-4xl mb-sm">💬</div>
-            <h3 className="text-title-medium font-brand text-sys-color-primary mb-xs">
-              Chat with Orb
-            </h3>
-            <p className="text-body-small font-plain text-sys-color-onSurface opacity-70">
-              Begin a conversation with your AI companion
-            </p>
-          </button>
-        </div>
-
-        {/* Getting Started */}
-        <div className="text-left">
-          <h2 className="text-title-large font-brand text-sys-color-primary mb-md">
-            Getting Started
-          </h2>
-          <div className="space-y-sm text-body-medium font-plain text-sys-color-onSurface opacity-80">
-            <div className="flex items-start gap-sm">
-              <span className="text-ref-palette-accent-journeyGold">1.</span>
-              <span>Use the HUD controls (top-right) to navigate between scenes and features</span>
-            </div>
-            <div className="flex items-start gap-sm">
-              <span className="text-ref-palette-accent-journeyGold">2.</span>
-              <span>Start a conversation with your Orb companion to begin capturing memories</span>
-            </div>
-            <div className="flex items-start gap-sm">
-              <span className="text-ref-palette-accent-journeyGold">3.</span>
-              <span>Watch as your knowledge cards evolve and form constellations of meaning</span>
-            </div>
-            <div className="flex items-start gap-sm">
-              <span className="text-ref-palette-accent-journeyGold">4.</span>
-              <span>Explore the 3D graph scene to visualize connections in your personal cosmos</span>
-            </div>
-          </div>
-        </div>
+    <div className="relative w-full h-screen overflow-hidden">
+      {/* Background Video - Layer 1 (bottom) */}
+      <div className="absolute inset-0 z-0">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+          src="/videos/Cloud1.mp4"
+        >
+          Your browser does not support the video tag.
+        </video>
+        {/* Video Overlay */}
+        <div className="absolute inset-0 bg-black/30"></div>
       </div>
+
+      {/* Main Content - Layer 2 (top) */}
+      <main className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4">
+        {/* Top-right Navigation */}
+        <nav className="absolute top-0 right-0 p-4 sm:p-6 md:p-8">
+          <div className="flex items-center gap-4">
+            {isAuthenticated ? (
+              <>
+                {/* User Greeting */}
+                <GlassmorphicPanel 
+                  variant="glass-panel" 
+                  rounded="lg" 
+                  padding="sm" 
+                  className="text-sm text-onSurface"
+                >
+                  Welcome, {user?.name || user?.email?.split('@')[0] || 'User'}
+                </GlassmorphicPanel>
+                {/* Logout Button */}
+                <GlassButton 
+                  onClick={handleLogout}
+                  className="text-onBackground font-brand"
+                >
+                  Log out
+                </GlassButton>
+              </>
+            ) : (
+              <>
+                {/* Login Button */}
+                <GlassButton 
+                  onClick={openLoginModal}
+                  className="text-onBackground font-brand"
+                >
+                  Log in
+                </GlassButton>
+                {/* Signup Button */}
+                <GlassButton 
+                  onClick={openSignupModal}
+                  className="text-onBackground font-brand"
+                >
+                  Sign up
+                </GlassButton>
+              </>
+            )}
+          </div>
+        </nav>
+
+        {/* Centered Glassmorphism Panel */}
+        <GlassmorphicPanel 
+          variant="glass-panel"
+          rounded="xl" 
+          padding="lg"
+          className="w-full max-w-xl md:max-w-2xl text-center sm:rounded-2xl"
+        >
+          <h1 className="font-brand text-3xl sm:text-4xl md:text-5xl font-medium text-primary mb-4">
+            {isAuthenticated ? `Welcome back, ${user?.name || 'Explorer'}` : 'A New Horizon Awaits'}
+          </h1>
+          <p className="font-sans text-base sm:text-lg text-onSurface max-w-prose mx-auto">
+            {isAuthenticated 
+              ? 'Your journey continues. Explore the depths of reflection and discovery that await you.'
+              : 'Step into a space of reflection and connection. Discover the stories within, and watch your inner world expand.'
+            }
+          </p>
+        </GlassmorphicPanel>
+      </main>
+
+      {/* Authentication Modals - Layer 3 (highest) */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={closeModals}
+        onSwitchToSignup={openSignupModal}
+      />
+      
+      <SignupModal
+        isOpen={isSignupModalOpen}
+        onClose={closeModals}
+        onSwitchToLogin={openLoginModal}
+      />
     </div>
   );
-} 
+};
+
+export default HomePage;

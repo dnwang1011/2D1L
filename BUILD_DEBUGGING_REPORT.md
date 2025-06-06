@@ -371,6 +371,7 @@ This section provides a definitive guide to performing a completely clean build 
     *   Remove all TypeScript build info files:
         ```bash
         find packages apps services workers -name tsconfig.tsbuildinfo -type f -delete
+         find packages apps services workers -name "tsconfig2.tsbuildinfo" -type f -delete
         ```
     *   Remove all nested `.turbo` cache directories:
         ```bash
