@@ -49,7 +49,9 @@ build
 
 # Database data directories
 postgres_data/
-neo4j_data/ 
+neo4j_data/
+weaviate_data/
+redis_data/
 
 # Archive 
 archive/
